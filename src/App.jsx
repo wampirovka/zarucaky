@@ -10,7 +10,7 @@ function getDaysLeft(purchaseDate, warrantyMonths) {
 function getExpiryDate(purchaseDate, warrantyMonths) {
   const expiry = new Date(purchaseDate);
   expiry.setMonth(expiry.getMonth() + parseInt(warrantyMonths));
-  return expiry.toLocaleDateString("cs-CZ");
+  return expiry.toLocaleDateString(lang === "cs" ? "cs-CZ" : "en-GB");
 }
 function getExpiryISO(purchaseDate, warrantyMonths) {
   const expiry = new Date(purchaseDate);
@@ -47,6 +47,107 @@ async function uploadFile(file, userId, folder) {
   return data.publicUrl;
 }
 
+// ─── i18n ─────────────────────────────────────────────────────────────────────
+const TRANSLATIONS = {
+  cs: {
+    appName: "ZÁRUČÁKY", appSubtitle: "SPRÁVA ZÁRUČNÍCH LHŮT",
+    login: T.login, register: T.register,
+    loginBtn: "PŘIHLÁSIT SE →", registerBtn: "REGISTROVAT →", resetBtn: "ODESLAT RESET →",
+    email: T.email, password: T.password, passwordAgain: T.passwordAgain,
+    forgotPassword: "{T.forgotPassword}", backToLogin: "{T.backToLogin}",
+    connected: "{T.connected}",
+    active: "AKTIVNÍCH", expired_s: "VYPRŠELÝCH",
+    total: "CELKEM", expiringSoon: T.expiringSoon, expired: T.expired,
+    byExpiry: T.byExpiry, byName: T.byName,
+    items: "POLOŽKY", searchPlaceholder: T.searchPlaceholder,
+    addItem: "{T.addItem}", noResults: "Žádné výsledky pro",
+    addNew: "＋ NOVÁ POLOŽKA", editItem: "✏️ UPRAVIT POLOŽKU",
+    itemName: T.itemName, itemNamePlaceholder: T.itemNamePlaceholder,
+    price: T.price, warrantyMonths: T.warrantyMonths, serial: T.serial,
+    purchaseDate: T.purchaseDate, category: T.category, note: "POZNÁMKA",
+    notePlaceholder: T.notePlaceholder, warrantyExpires: "ZÁRUKA VYPRŠÍ",
+    cancel: "ZRUŠIT", saveChanges: "ULOŽIT ZMĚNY →", addItemBtn: "PŘIDAT POLOŽKU →",
+    saving: T.saving,
+    photoProduct: T.photoProduct, receipt: T.receipt, noPhoto: T.noPhoto,
+    addReceipt: "{T.addReceipt}",
+    takePhoto: "{T.takePhoto}", takePhotoDesc: "{T.takePhotoDesc}",
+    fromGallery: "{T.fromGallery}", fromGalleryDesc: "{T.fromGalleryDesc}",
+    edit: "✏️ UPRAVIT", delete: "🗑",
+    deleteTitle: "Smazat položku?", deleteConfirm: "SMAZAT", deleting: "MAŽU…",
+    deleteWarning: "{T.deleteWarning}",
+    stats: T.stats, totalValue: T.totalValue, activeValue: T.activeValue,
+    activeWarranties: T.activeWarranties, avgPrice: T.avgPrice,
+    soonestExpiry: T.soonestExpiry, byCategory: T.byCategory,
+    exportPDF: T.exportPDF, days: "T.days + "",
+    bought: "KOUPENO", until: "DO",
+    priceLabel: "CENA", serialLabel: "SÉRIOVÉ Č.", buyDate: T.purchaseDate,
+    warrantyUntil: "ZÁRUKA DO", warrantyLength: "DÉLKA ZÁRUKY", remaining: "ZBÝVÁ",
+    noteLabel: "POZNÁMKA", changePhoto: "ZMĚNIT", addPhoto: "+ PŘIDAT",
+    logoutConfirm: "Odhlásit se?", count: "ks",
+    emptyTitle: "Zatím žádné záruky", emptyDesc: "{T.emptyDesc}",
+    errLoad: T.errLoad, errSave: T.errSave, errDelete: T.errDelete,
+    errPhotoUpload: T.errPhotoUpload, errReceiptUpload: T.errReceiptUpload,
+    savedOk: T.savedOk, addedOk: T.addedOk, deletedOk: T.deletedOk,
+    badCredentials: "Špatný e-mail nebo heslo",
+    fillEmailPass: T.fillEmailPass, passMismatch: T.passMismatch,
+    passShort: T.passShort, fillEmail: T.fillEmail,
+    registerOk: T.registerOk, resetOk: T.resetOk,
+    categories: ["Elektronika", "Počítače", "Nářadí", "Bílá technika", "Nábytek", "Sport", "Ostatní"],
+    exportDate: "Export ze dne", exportTitle: "ZÁRUČÁKY – Export",
+    copiedToClipboard: T.copiedToClipboard,
+  },
+  en: {
+    appName: "WARRANTI", appSubtitle: "WARRANTY MANAGEMENT",
+    login: "LOGIN", register: "REGISTER",
+    loginBtn: "LOG IN →", registerBtn: "REGISTER →", resetBtn: "SEND RESET →",
+    email: T.email, password: "PASSWORD", passwordAgain: "CONFIRM PASSWORD",
+    forgotPassword: "Forgot password?", backToLogin: "← Back to login",
+    connected: "CONNECTED TO SUPABASE",
+    active: "ACTIVE", expired_s: "EXPIRED",
+    total: "TOTAL", expiringSoon: "EXPIRING SOON", expired: "EXPIRED",
+    byExpiry: "BY EXPIRY", byName: "BY NAME",
+    items: "ITEMS", searchPlaceholder: "Search item or category…",
+    addItem: "+ ADD FIRST ITEM", noResults: "No results for",
+    addNew: "＋ NEW ITEM", editItem: "✏️ EDIT ITEM",
+    itemName: "ITEM NAME", itemNamePlaceholder: "e.g. Samsung Galaxy S24",
+    price: "PRICE", warrantyMonths: "WARRANTY (MO.)", serial: "SERIAL NUMBER",
+    purchaseDate: "PURCHASE DATE", category: "CATEGORY", note: "NOTE",
+    notePlaceholder: "Optional note…", warrantyExpires: "WARRANTY EXPIRES",
+    cancel: "CANCEL", saveChanges: "SAVE CHANGES →", addItemBtn: "ADD ITEM →",
+    saving: "SAVING…",
+    photoProduct: "PRODUCT PHOTO", receipt: "RECEIPT", noPhoto: "NO PHOTO",
+    addReceipt: "Add receipt via Edit",
+    takePhoto: "Take photo", takePhotoDesc: "Open camera",
+    fromGallery: "Choose from gallery", fromGalleryDesc: "Pick existing photo",
+    edit: "✏️ EDIT", delete: "🗑",
+    deleteTitle: "Delete item?", deleteConfirm: "DELETE", deleting: "DELETING…",
+    deleteWarning: "This action cannot be undone.",
+    stats: "📊 STATISTICS", totalValue: "TOTAL VALUE", activeValue: "VALUE IN WARRANTY",
+    activeWarranties: "ACTIVE WARRANTIES", avgPrice: "AVG. PRICE",
+    soonestExpiry: "EXPIRING SOONEST", byCategory: "BY CATEGORY",
+    exportPDF: "📄 EXPORT TO PDF", days: "days",
+    bought: "BOUGHT", until: "UNTIL",
+    priceLabel: "PRICE", serialLabel: "SERIAL NO.", buyDate: "PURCHASE DATE",
+    warrantyUntil: "WARRANTY UNTIL", warrantyLength: "WARRANTY LENGTH", remaining: "REMAINING",
+    noteLabel: "NOTE", changePhoto: "CHANGE", addPhoto: "+ ADD",
+    logoutConfirm: "Log out?", count: "pcs",
+    emptyTitle: "No warranties yet", emptyDesc: "Add your first item to track warranty periods.",
+    errLoad: "Load error: ", errSave: "Save error: ", errDelete: "Delete error: ",
+    errPhotoUpload: "Photo upload error: ", errReceiptUpload: "Receipt upload error: ",
+    savedOk: "Item updated ✓", addedOk: "Item added ✓", deletedOk: "Item deleted",
+    badCredentials: "Wrong email or password",
+    fillEmailPass: "Enter email and password", passMismatch: "Passwords don't match",
+    passShort: "Password must be at least 6 characters", fillEmail: "Enter your email",
+    registerOk: "Registration successful! Check your email.", resetOk: "Password reset email sent!",
+    categories: ["Electronics", "Computers", "Tools", "Appliances", "Furniture", "Sports", "Other"],
+    exportDate: "Exported on", exportTitle: "WARRANTI – Export",
+    copiedToClipboard: "Copied to clipboard!",
+  },
+};
+
+const lang = navigator.language?.startsWith("cs") || navigator.language?.startsWith("sk") ? "cs" : "en";
+const T = TRANSLATIONS[lang];
+
 // ─── theme ────────────────────────────────────────────────────────────────────
 const LIGHT = {
   bg: "#f5f5f0", surface: "#ffffff", card: "#fafaf7",
@@ -68,7 +169,7 @@ const DARK = {
 };
 
 const FONT = "'Space Mono', monospace";
-const CATEGORIES = ["Elektronika", "Počítače", "Nářadí", "Bílá technika", "Nábytek", "Sport", "Ostatní"];
+const CATEGORIES = T.categories;
 
 // ─── theme context ────────────────────────────────────────────────────────────
 const ThemeCtx = React.createContext({ C: LIGHT, dark: false, toggle: () => {} });
@@ -97,30 +198,66 @@ function GlobalStyles({ dark }) {
 }
 
 // ─── PhotoUpload ──────────────────────────────────────────────────────────────
-function PhotoUpload({ url, onFile, label = "FOTO PRODUKTU", height = 130, accept = "image/*" }) {
+function PhotoUpload({ url, onFile, label = T.photoProduct, height = 130, accept = "image/*" }) {
   const { C } = useTheme();
-  const ref = React.useRef();
+  const refCamera = React.useRef();
+  const refGallery = React.useRef();
   const [preview, setPreview] = React.useState(url || null);
+  const [showMenu, setShowMenu] = React.useState(false);
+
   const handleChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPreview(URL.createObjectURL(file));
     onFile(file);
+    setShowMenu(false);
   };
+
   return (
-    <div onClick={() => ref.current.click()}
-      style={{ background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 8, height, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, position: "relative", overflow: "hidden", cursor: "pointer" }}>
-      {preview
-        ? <img src={preview} alt="náhled" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        : <div style={{ textAlign: "center", pointerEvents: "none" }}>
-            <div style={{ fontSize: height > 100 ? 28 : 22 }}>📷</div>
-            <div style={{ fontSize: 9, color: C.muted, fontFamily: FONT, letterSpacing: "0.1em", marginTop: 4 }}>{label}</div>
-          </div>
-      }
-      <div style={{ position: "absolute", top: 8, right: 8, background: C.yellow, color: "#000", fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 2, fontFamily: FONT, pointerEvents: "none" }}>
-        {preview ? "ZMĚNIT" : "+ PŘIDAT"}
+    <div style={{ marginBottom: 14, position: "relative" }}>
+      {/* hlavní plocha */}
+      <div onClick={() => setShowMenu(m => !m)}
+        style={{ background: C.surface, border: `1px dashed ${showMenu ? C.yellow : C.border}`, borderRadius: 8, height, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", cursor: "pointer" }}>
+        {preview
+          ? <img src={preview} alt="náhled" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : <div style={{ textAlign: "center", pointerEvents: "none" }}>
+              <div style={{ fontSize: height > 100 ? 28 : 22 }}>📷</div>
+              <div style={{ fontSize: 9, color: C.muted, fontFamily: FONT, letterSpacing: "0.1em", marginTop: 4 }}>{label}</div>
+            </div>
+        }
+        <div style={{ position: "absolute", top: 8, right: 8, background: C.yellow, color: "#000", fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 2, fontFamily: FONT, pointerEvents: "none" }}>
+          {preview ? T.changePhoto : T.addPhoto}
+        </div>
       </div>
-      <input ref={ref} type="file" accept={accept} capture="environment" onChange={handleChange} style={{ display: "none" }} />
+
+      {/* výběr zdroje */}
+      {showMenu && (
+        <div style={{ position: "absolute", top: height + 4, left: 0, right: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, zIndex: 10, overflow: "hidden", boxShadow: "0 4px 20px #0002" }}>
+          <div onClick={() => refCamera.current.click()}
+            style={{ padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 20 }}>📷</span>
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.text }}>{T.takePhoto}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{T.takePhotoDesc}</div>
+            </div>
+          </div>
+          <div onClick={() => refGallery.current.click()}
+            style={{ padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 20 }}>🖼️</span>
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.text }}>{T.fromGallery}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{T.fromGalleryDesc}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* backdrop pro zavření menu */}
+      {showMenu && <div style={{ position: "fixed", inset: 0, zIndex: 9 }} onClick={() => setShowMenu(false)} />}
+
+      {/* skryté inputy */}
+      <input ref={refCamera} type="file" accept={accept} capture="environment" onChange={handleChange} style={{ display: "none" }} />
+      <input ref={refGallery} type="file" accept={accept} onChange={handleChange} style={{ display: "none" }} />
     </div>
   );
 }
@@ -226,7 +363,7 @@ function exportPDF(items) {
         <td>${item.price ? parseFloat(item.price).toLocaleString("cs-CZ") + " Kč" : "—"}</td>
         <td>${new Date(item.purchaseDate).toLocaleDateString("cs-CZ")}</td>
         <td>${getExpiryDate(item.purchaseDate, item.warrantyMonths)}</td>
-        <td style="color:${expired ? "#aaa" : days < 60 ? "#e6a000" : "#2d6a1f"}">${expired ? "VYPRŠELO" : days + " dní"}</td>
+        <td style="color:${expired ? "#aaa" : days < 60 ? "#e6a000" : "#2d6a1f"}">${expired ? T.expired : days + " T.days + ""}</td>
         <td>${item.serial || "—"}</td>
       </tr>`;
   }).join("");
@@ -236,7 +373,7 @@ function exportPDF(items) {
   const now = new Date().toLocaleDateString("cs-CZ");
 
   const html = `<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">
-  <title>Záručáky – Export</title>
+  <title>${T.exportTitle}</title>
   <style>
     body { font-family: monospace; padding: 32px; color: #1a1a1a; }
     h1 { font-size: 22px; margin-bottom: 4px; }
@@ -251,7 +388,7 @@ function exportPDF(items) {
     tr:last-child td { border-bottom: none; }
     .footer { margin-top: 32px; font-size: 10px; color: #ccc; text-align: center; }
   </style></head><body>
-  <h1>⬛ ZÁRUČÁKY</h1>
+  <h1>⬛ ${T.appName}</h1>
   <div class="meta">Export ze dne ${now}</div>
   <div class="stats">
     <div class="stat"><div class="stat-val">${items.length}</div><div class="stat-label">Celkem položek</div></div>
@@ -283,12 +420,12 @@ ${item.price ? `Cena: ${parseFloat(item.price).toLocaleString("cs-CZ")} Kč\n` :
 Záruka do: ${getExpiryDate(item.purchaseDate, item.warrantyMonths)}
 Stav: ${expired ? "⚠️ VYPRŠELO" : `✅ zbývá ${days} dní`}
 ${item.serial ? `S/N: ${item.serial}` : ""}
-— Záručáky (PasysDev)`;
+— ${T.appName} (PasysDev)`;
 
   if (navigator.share) {
     navigator.share({ title: item.name, text }).catch(() => {});
   } else {
-    navigator.clipboard.writeText(text).then(() => alert("Zkopírováno do schránky!"));
+    navigator.clipboard.writeText(text).then(() => alert(T.copiedToClipboard));
   }
 }
 
@@ -316,12 +453,12 @@ function StatsSheet({ items, onClose }) {
       {/* hlavní čísla */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
         {[
-          { label: "CELKOVÁ HODNOTA", value: totalValue.toLocaleString("cs-CZ") + " Kč", color: C.text },
-          { label: "HODNOTA V ZÁRUCE", value: activeValue.toLocaleString("cs-CZ") + " Kč", color: C.greenLight },
-          { label: "AKTIVNÍ ZÁRUKY", value: active.length, color: C.greenLight },
-          { label: "VYPRŠELO", value: expired.length, color: C.muted },
-          { label: "BRZY VYPRŠÍ", value: expiring.length, color: C.yellow },
-          { label: "PRŮMĚRNÁ CENA", value: items.length ? Math.round(totalValue / items.length).toLocaleString("cs-CZ") + " Kč" : "—", color: C.text },
+          { label: T.totalValue, value: totalValue.toLocaleString("cs-CZ") + " Kč", color: C.text },
+          { label: T.activeValue, value: activeValue.toLocaleString("cs-CZ") + " Kč", color: C.greenLight },
+          { label: T.activeWarranties, value: active.length, color: C.greenLight },
+          { label: T.expired, value: expired.length, color: C.muted },
+          { label: T.expiringSoon, value: expiring.length, color: C.yellow },
+          { label: T.avgPrice, value: items.length ? Math.round(totalValue / items.length).toLocaleString("cs-CZ") + " Kč" : "—", color: C.text },
         ].map(s => (
           <div key={s.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 14px" }}>
             <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 4 }}>{s.label}</div>
@@ -355,7 +492,7 @@ function StatsSheet({ items, onClose }) {
             <div key={x.cat} style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 10, color: C.text, fontFamily: FONT }}>{x.cat}</span>
-                <span style={{ fontSize: 10, color: C.muted, fontFamily: FONT }}>{x.count} ks · {x.value ? x.value.toLocaleString("cs-CZ") + " Kč" : "—"}</span>
+                <span style={{ fontSize: 10, color: C.muted, fontFamily: FONT }}>{x.count} {T.count} · {x.value ? x.value.toLocaleString("cs-CZ") + " Kč" : "—"}</span>
               </div>
               <div style={{ height: 4, background: C.border, borderRadius: 2, overflow: "hidden" }}>
                 <div style={{ width: `${(x.count / items.length) * 100}%`, height: "100%", background: C.greenLight, borderRadius: 2 }} />
@@ -387,8 +524,8 @@ function ItemCard({ item, onSelect }) {
           <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: isExpired ? C.muted : C.text, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             <Badge text={item.category} color={isExpired ? C.muted : C.greenLight} />
-            {urgency && <Badge text="BRZY VYPRŠÍ" color={C.yellow} />}
-            {isExpired && <Badge text="VYPRŠELO" color={C.muted} />}
+            {urgency && <Badge text=T.expiringSoon color={C.yellow} />}
+            {isExpired && <Badge text=T.expired color={C.muted} />}
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -398,8 +535,8 @@ function ItemCard({ item, onSelect }) {
       </div>
       <WarrantyBar daysLeft={days} isExpired={isExpired} />
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 9, color: C.faint, fontFamily: FONT }}>
-        <span>KOUPENO {new Date(item.purchaseDate).toLocaleDateString("cs-CZ")}</span>
-        <span>DO {getExpiryDate(item.purchaseDate, item.warrantyMonths)}</span>
+        <span>{T.bought} {new Date(item.purchaseDate).toLocaleDateString(lang === "cs" ? "cs-CZ" : "en-GB")}</span>
+        <span>{T.until} {getExpiryDate(item.purchaseDate, item.warrantyMonths)}</span>
       </div>
     </div>
   );
@@ -412,12 +549,12 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
   const isExpired = days <= 0;
   const priceStr = item.price ? parseFloat(item.price).toLocaleString("cs-CZ") + " Kč" : "—";
   const fields = [
-    { label: "CENA", value: priceStr },
-    { label: "SÉRIOVÉ Č.", value: item.serial || "—" },
-    { label: "DATUM NÁKUPU", value: new Date(item.purchaseDate).toLocaleDateString("cs-CZ") },
-    { label: "ZÁRUKA DO", value: getExpiryDate(item.purchaseDate, item.warrantyMonths) },
-    { label: "DÉLKA ZÁRUKY", value: item.warrantyMonths + " měs." },
-    { label: "ZBÝVÁ", value: isExpired ? "VYPRŠELO" : days + " dní" },
+    { label: T.priceLabel, value: priceStr },
+    { label: T.serialLabel, value: item.serial || "—" },
+    { label: T.buyDate, value: new Date(item.purchaseDate).toLocaleDateString(lang === "cs" ? "cs-CZ" : "en-GB") },
+    { label: T.warrantyUntil, value: getExpiryDate(item.purchaseDate, item.warrantyMonths) },
+    { label: T.warrantyLength, value: item.warrantyMonths + (lang === "cs" ? " měs." : " mo.") },
+    { label: "ZBÝVÁ", value: isExpired ? T.expired : days + " T.days + "" },
   ];
   return (
     <Sheet onClose={onClose}>
@@ -447,7 +584,7 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
       </div>
       {item.note && (
         <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", border: `1px solid ${C.border}`, marginBottom: 14 }}>
-          <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 3 }}>POZNÁMKA</div>
+          <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 3 }}>{T.noteLabel}</div>
           <div style={{ fontSize: 11, color: C.muted }}>{item.note}</div>
         </div>
       )}
@@ -460,12 +597,12 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
             <span style={{ fontSize: 20 }}>🧾</span>
             <div>
               <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em" }}>ÚČTENKA</div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Přidej účtenku přes Upravit</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{T.addReceipt}</div>
             </div>
           </div>
       }
       <div style={{ display: "flex", gap: 10 }}>
-        <Btn onClick={() => { onClose(); onEdit(item); }} style={{ flex: 1 }}>✏️ UPRAVIT</Btn>
+        <Btn onClick={() => { onClose(); onEdit(item); }} style={{ flex: 1 }}>{T.edit}</Btn>
         <Btn onClick={() => { onClose(); onDelete(item); }} variant="danger">🗑</Btn>
       </div>
     </Sheet>
@@ -485,33 +622,33 @@ function AddEditSheet({ item, onClose, onSave, loading }) {
 
   return (
     <Sheet onClose={onClose} maxHeight="96vh">
-      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 16 }}>{isEdit ? "✏️ UPRAVIT POLOŽKU" : "＋ NOVÁ POLOŽKA"}</div>
-      <PhotoUpload url={form.photoUrl} onFile={setPhotoFile} label="FOTO PRODUKTU" height={110} />
-      <PhotoUpload url={form.receiptUrl} onFile={setReceiptFile} label="ÚČTENKA" height={70} accept="image/*,application/pdf" />
-      <FInput label="NÁZEV POLOŽKY" required value={form.name} onChange={set("name")} placeholder="např. Samsung Galaxy S24" />
+      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 16 }}>{isEdit ? T.editItem : T.addNew}</div>
+      <PhotoUpload url={form.photoUrl} onFile={setPhotoFile} label=T.photoProduct height={110} />
+      <PhotoUpload url={form.receiptUrl} onFile={setReceiptFile} label=T.receipt height={70} accept="image/*,application/pdf" />
+      <FInput label=T.itemName required value={form.name} onChange={set("name")} placeholder=T.itemNamePlaceholder />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <FInput label="CENA (Kč)" value={form.price} onChange={set("price")} type="number" placeholder="0" />
-        <FInput label="ZÁRUKA (MĚS.)" value={form.warrantyMonths} onChange={set("warrantyMonths")} type="number" placeholder="24" />
+        <FInput label=T.price value={form.price} onChange={set("price")} type="number" placeholder="0" />
+        <FInput label=T.warrantyMonths value={form.warrantyMonths} onChange={set("warrantyMonths")} type="number" placeholder="24" />
       </div>
-      <FInput label="SÉRIOVÉ ČÍSLO" value={form.serial} onChange={set("serial")} placeholder="SN-XXXXX" />
-      <FInput label="DATUM NÁKUPU" value={form.purchaseDate} onChange={set("purchaseDate")} type="date" />
-      <FSelect label="KATEGORIE" value={form.category} onChange={set("category")} options={CATEGORIES} />
+      <FInput label=T.serial value={form.serial} onChange={set("serial")} placeholder="SN-XXXXX" />
+      <FInput label=T.purchaseDate value={form.purchaseDate} onChange={set("purchaseDate")} type="date" />
+      <FSelect label=T.category value={form.category} onChange={set("category")} options={CATEGORIES} />
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>POZNÁMKA</div>
-        <textarea value={form.note} onChange={set("note")} placeholder="Volitelná poznámka…" rows={3}
+        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>{T.noteLabel}</div>
+        <textarea value={form.note} onChange={set("note")} placeholder=T.notePlaceholder rows={3}
           style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "11px 13px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
       </div>
       {form.purchaseDate && form.warrantyMonths && (
         <div style={{ background: C.bg, border: `1px solid ${C.borderGreen}`, borderRadius: 5, padding: "8px 12px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.1em" }}>ZÁRUKA VYPRŠÍ</span>
+          <span style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.1em" }}>{T.warrantyExpires}</span>
           <span style={{ fontSize: 11, color: C.greenLight, fontFamily: FONT, fontWeight: 700 }}>{getExpiryISO(form.purchaseDate, form.warrantyMonths)}</span>
         </div>
       )}
       <div style={{ display: "flex", gap: 10 }}>
-        <Btn onClick={onClose} variant="ghost" style={{ flex: 1 }} disabled={loading}>ZRUŠIT</Btn>
+        <Btn onClick={onClose} variant="ghost" style={{ flex: 1 }} disabled={loading}>{T.cancel}</Btn>
         <Btn onClick={async () => { if (form.name.trim() && !loading) await onSave(form, photoFile, receiptFile); }}
           disabled={!form.name.trim() || loading} style={{ flex: 2 }}>
-          {loading ? "UKLÁDÁM…" : isEdit ? "ULOŽIT ZMĚNY →" : "PŘIDAT POLOŽKU →"}
+          {loading ? T.saving : isEdit ? T.saveChanges : T.addItemBtn}
         </Btn>
       </div>
     </Sheet>
@@ -525,12 +662,12 @@ function DeleteSheet({ item, onClose, onConfirm, loading }) {
     <Sheet onClose={onClose}>
       <div style={{ textAlign: "center", padding: "10px 0" }}>
         <div style={{ fontSize: 38, marginBottom: 14 }}>🗑️</div>
-        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 8 }}>Smazat položku?</div>
+        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 8 }}>{T.deleteTitle}</div>
         <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>{item.name}</div>
-        <div style={{ fontSize: 10, color: C.faint, marginBottom: 28 }}>Tato akce je nevratná.</div>
+        <div style={{ fontSize: 10, color: C.faint, marginBottom: 28 }}>{T.deleteWarning}</div>
         <div style={{ display: "flex", gap: 10 }}>
-          <Btn onClick={onClose} variant="ghost" style={{ flex: 1 }} disabled={loading}>ZRUŠIT</Btn>
-          <Btn onClick={() => onConfirm(item.id)} variant="danger" style={{ flex: 1 }} disabled={loading}>{loading ? "MAŽU…" : "SMAZAT"}</Btn>
+          <Btn onClick={onClose} variant="ghost" style={{ flex: 1 }} disabled={loading}>{T.cancel}</Btn>
+          <Btn onClick={() => onConfirm(item.id)} variant="danger" style={{ flex: 1 }} disabled={loading}>{loading ? T.deleting : T.deleteConfirm}</Btn>
         </div>
       </div>
     </Sheet>
@@ -543,9 +680,9 @@ function EmptyState({ onAdd }) {
   return (
     <div style={{ textAlign: "center", padding: "60px 24px" }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
-      <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.muted, marginBottom: 8 }}>Zatím žádné záruky</div>
-      <div style={{ fontSize: 11, color: C.faint, marginBottom: 28 }}>Přidej první položku a sleduj záruční lhůty.</div>
-      <Btn onClick={onAdd}>+ PŘIDAT PRVNÍ POLOŽKU</Btn>
+      <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.muted, marginBottom: 8 }}>{T.emptyTitle}</div>
+      <div style={{ fontSize: 11, color: C.faint, marginBottom: 28 }}>{T.emptyDesc}</div>
+      <Btn onClick={onAdd}>{T.addItem}</Btn>
     </div>
   );
 }
@@ -564,30 +701,30 @@ function LoginScreen() {
   const showMsg = (text, type = "ok") => { setMsg(text); setMsgType(type); setTimeout(() => setMsg(null), 3500); };
 
   const handleLogin = async () => {
-    if (!email || !pass) return showMsg("Vyplň e-mail a heslo", "error");
+    if (!email || !pass) return showMsg(T.fillEmailPass, "error");
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     setLoading(false);
-    if (error) return showMsg(error.message === "Invalid login credentials" ? "Špatný e-mail nebo heslo" : error.message, "error");
+    if (error) return showMsg(error.message === "Invalid login credentials" ? T.badCredentials : error.message, "error");
   };
   const handleRegister = async () => {
-    if (!email || !pass) return showMsg("Vyplň e-mail a heslo", "error");
-    if (pass !== pass2) return showMsg("Hesla se neshodují", "error");
-    if (pass.length < 6) return showMsg("Heslo musí mít alespoň 6 znaků", "error");
+    if (!email || !pass) return showMsg(T.fillEmailPass, "error");
+    if (pass !== pass2) return showMsg(T.passMismatch, "error");
+    if (pass.length < 6) return showMsg(T.passShort, "error");
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password: pass });
     setLoading(false);
     if (error) return showMsg(error.message, "error");
-    showMsg("Registrace úspěšná! Zkontroluj e-mail.");
+    showMsg(T.registerOk);
     setMode("login");
   };
   const handleReset = async () => {
-    if (!email) return showMsg("Zadej e-mail", "error");
+    if (!email) return showMsg(T.fillEmail, "error");
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
     if (error) return showMsg(error.message, "error");
-    showMsg("E-mail pro reset hesla odeslán!");
+    showMsg(T.resetOk);
     setMode("login");
   };
 
@@ -603,12 +740,12 @@ function LoginScreen() {
         <div style={{ display: "inline-block", background: C.yellow, padding: "10px 20px", marginBottom: 14 }}>
           <span style={{ fontSize: 26, fontWeight: 700, color: "#000", letterSpacing: "0.04em" }}>ZÁRUČ<span style={{ color: "#1a3a10" }}>ÁKY</span></span>
         </div>
-        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.25em" }}>SPRÁVA ZÁRUČNÍCH LHŮT</div>
+        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.25em" }}>{T.appSubtitle}</div>
       </div>
 
       <div style={{ width: "100%", maxWidth: 340 }}>
         <div style={{ display: "flex", marginBottom: 24, border: `1px solid ${C.border}`, borderRadius: 6, overflow: "hidden" }}>
-          {[["login","PŘIHLÁSIT"], ["register","REGISTROVAT"]].map(([k, label]) => (
+          {[["login",T.login], ["register",T.register]].map(([k, label]) => (
             <button key={k} onClick={() => setMode(k)}
               style={{ flex: 1, padding: "9px 0", background: mode === k ? C.yellow : C.surface, color: mode === k ? "#000" : C.muted, border: "none", fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>
               {label}
@@ -638,15 +775,15 @@ function LoginScreen() {
 
         <button onClick={handle} disabled={loading}
           style={{ width: "100%", background: loading ? C.border : C.yellow, color: loading ? C.muted : "#000", border: "none", borderRadius: 4, padding: "14px", fontFamily: FONT, fontWeight: 700, fontSize: 13, letterSpacing: "0.1em", cursor: loading ? "default" : "pointer", marginBottom: 14 }}>
-          {loading ? "…" : mode === "login" ? "PŘIHLÁSIT SE →" : mode === "register" ? "REGISTROVAT →" : "ODESLAT RESET →"}
+          {loading ? "…" : mode === "login" ? T.loginBtn : mode === "register" ? T.registerBtn : T.resetBtn}
         </button>
 
-        {mode === "login" && <div style={{ textAlign: "center" }}><span onClick={() => setMode("reset")} style={{ fontSize: 10, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>Zapomenuté heslo?</span></div>}
-        {mode === "reset" && <div style={{ textAlign: "center" }}><span onClick={() => setMode("login")} style={{ fontSize: 10, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>← Zpět na přihlášení</span></div>}
+        {mode === "login" && <div style={{ textAlign: "center" }}><span onClick={() => setMode("reset")} style={{ fontSize: 10, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>{T.forgotPassword}</span></div>}
+        {mode === "reset" && <div style={{ textAlign: "center" }}><span onClick={() => setMode("login")} style={{ fontSize: 10, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>{T.backToLogin}</span></div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 20, justifyContent: "center" }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, boxShadow: `0 0 8px ${C.green}` }} />
-          <span style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em" }}>NAPOJENO NA SUPABASE</span>
+          <span style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em" }}>{T.connected}</span>
         </div>
 
         <div style={{ textAlign: "center", marginTop: 32, fontSize: 9, color: C.faint }}>© PasysDev</div>
@@ -690,9 +827,9 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div>
             <div style={{ display: "inline-block", background: C.yellow, padding: "2px 8px", marginBottom: 3 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#000", letterSpacing: "0.05em" }}>ZÁRUČÁKY</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#000", letterSpacing: "0.05em" }}>{T.appName}</span>
             </div>
-            <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.15em" }}>{active.length} AKTIVNÍCH · {expired.length} VYPRŠELÝCH</div>
+            <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.15em" }}>{active.length} {T.active} · {expired.length} {T.expired_s}</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <div onClick={() => { setShowSearch(s => !s); if (showSearch) setSearch(""); }}
@@ -701,18 +838,18 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
               style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>📊</div>
             <div onClick={onToggleTheme}
               style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>{dark ? "☀️" : "🌙"}</div>
-            <div onClick={() => { if (window.confirm(`Odhlásit se?\n${userEmail}`)) onLogout(); }}
+            <div onClick={() => { if (window.confirm(`${T.logoutConfirm}\n${userEmail}`)) onLogout(); }}
               style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.borderGreen}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }} title={userEmail}>👤</div>
           </div>
         </div>
 
         {showSearch && (
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hledat položku nebo kategorii…" autoFocus
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder=T.searchPlaceholder autoFocus
             style={{ width: "100%", background: C.surface, border: `1px solid ${C.yellow}66`, borderRadius: 4, padding: "9px 12px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
-          {[{ key: "expiry", label: "DLE ZÁRUKY" }, { key: "name", label: "DLE NÁZVU" }].map(s => (
+          {[{ key: "expiry", label: T.byExpiry }, { key: "name", label: T.byName }].map(s => (
             <button key={s.key} onClick={() => setSort(s.key)}
               style={{ background: sort === s.key ? C.yellow : C.surface, color: sort === s.key ? "#000" : C.muted, border: `1px solid ${sort === s.key ? C.yellow : C.border}`, borderRadius: 3, padding: "5px 12px", fontSize: 9, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>
               {s.label}
@@ -723,7 +860,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
 
       {/* stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, padding: "14px 16px" }}>
-        {[{ label: "CELKEM", value: items.length, color: C.text }, { label: "BRZY VYPRŠÍ", value: expiring.length, color: C.yellow }, { label: "VYPRŠELO", value: expired.length, color: C.muted }].map(s => (
+        {[{ label: T.total, value: items.length, color: C.text }, { label: T.expiringSoon, value: expiring.length, color: C.yellow }, { label: T.expired, value: expired.length, color: C.muted }].map(s => (
           <div key={s.label} style={{ background: C.statBg, border: `1px solid ${C.border}`, borderRadius: 6, padding: "10px 8px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 700, color: s.color, marginBottom: 2 }}>{s.value}</div>
             <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.12em" }}>{s.label}</div>
@@ -734,11 +871,11 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
       {/* list */}
       <div style={{ padding: "0 16px" }}>
         <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.2em", marginBottom: 12 }}>
-          POLOŽKY — {sort === "expiry" ? "DLE ZÁRUKY" : "DLE NÁZVU"}{search ? ` · "${search}"` : ""}
+          POLOŽKY — {sort === "expiry" ? T.byExpiry : T.byName}{search ? ` · "${search}"` : ""}
         </div>
         {loading ? <Spinner />
           : items.length === 0 ? <EmptyState onAdd={onAdd} />
-          : sorted.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: C.muted, fontSize: 11 }}>Žádné výsledky pro „{search}"</div>
+          : sorted.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: C.muted, fontSize: 11 }}>{T.noResults} „{search}"</div>
           : sorted.map(item => <ItemCard key={item.id} item={item} onSelect={onSelect} />)
         }
       </div>
@@ -785,7 +922,7 @@ export default function App() {
     setLoadingItems(true);
     const { data, error } = await supabase.from("items").select("*").order("created_at", { ascending: false });
     setLoadingItems(false);
-    if (error) return showToast("Chyba načítání: " + error.message, "error");
+    if (error) return showToast(T.errLoad + error.message, "error");
     setItems((data || []).map(fromDB));
   }, [session]);
 
@@ -797,15 +934,15 @@ export default function App() {
     try {
       let photoUrl = form.photoUrl || null;
       let receiptUrl = form.receiptUrl || null;
-      if (photoFile) { try { photoUrl = await uploadFile(photoFile, session.user.id, "photos"); } catch (e) { showToast("Chyba uploadu fotky: " + e.message, "error"); return; } }
-      if (receiptFile) { try { receiptUrl = await uploadFile(receiptFile, session.user.id, "receipts"); } catch (e) { showToast("Chyba uploadu účtenky: " + e.message, "error"); return; } }
+      if (photoFile) { try { photoUrl = await uploadFile(photoFile, session.user.id, "photos"); } catch (e) { showToast(T.errPhotoUpload + e.message, "error"); return; } }
+      if (receiptFile) { try { receiptUrl = await uploadFile(receiptFile, session.user.id, "receipts"); } catch (e) { showToast(T.errReceiptUpload + e.message, "error"); return; } }
       const isEdit = !!form.id && items.find(i => i.id === form.id);
       const payload = toDB({ ...form, photoUrl, receiptUrl }, session.user.id);
       let error;
       if (isEdit) { ({ error } = await supabase.from("items").update(payload).eq("id", form.id)); }
       else { ({ error } = await supabase.from("items").insert(payload)); }
-      if (error) { showToast("Chyba ukládání: " + error.message, "error"); return; }
-      showToast(isEdit ? "Položka aktualizována ✓" : "Položka přidána ✓");
+      if (error) { showToast(T.errSave + error.message, "error"); return; }
+      showToast(isEdit ? T.savedOk : T.addedOk);
       setEditing(null);
       fetchItems();
     } finally { setSavingItem(false); }
@@ -816,8 +953,8 @@ export default function App() {
     setDeletingItem(true);
     const { error } = await supabase.from("items").delete().eq("id", id);
     setDeletingItem(false);
-    if (error) return showToast("Chyba mazání: " + error.message, "error");
-    showToast("Položka smazána");
+    if (error) return showToast(T.errDelete + error.message, "error");
+    showToast(T.deletedOk);
     setDeleting(null);
     fetchItems();
   };
