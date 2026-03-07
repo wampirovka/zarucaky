@@ -9,4 +9,3 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-VITE_ANTHROPIC_KEY=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
