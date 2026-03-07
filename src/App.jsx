@@ -256,7 +256,7 @@ function PhotoUpload({ url, onFile, label = T.photoProduct, height = 130, accept
       {showMenu && <div style={{ position: "fixed", inset: 0, zIndex: 9 }} onClick={() => setShowMenu(false)} />}
 
       {/* skryté inputy */}
-      <input ref={refCamera} type="file" accept={accept} capture="environment" onChange={handleChange} style={{ display: "none" }} />
+      <input ref={refCamera} type="file" accept={accept} capture="camera" onChange={handleChange} style={{ display: "none" }} />
       <input ref={refGallery} type="file" accept={accept} onChange={handleChange} style={{ display: "none" }} />
     </div>
   );
