@@ -150,25 +150,28 @@ const T = TRANSLATIONS[lang];
 
 // ─── theme ────────────────────────────────────────────────────────────────────
 const LIGHT = {
-  bg: "#f5f5f0", surface: "#ffffff", card: "#fafaf7",
-  border: "#e0e0d8", borderGreen: "#c8dfc0",
-  yellow: "#e6c000", green: "#2d6a1f", greenLight: "#3a7a28",
-  text: "#1a1a1a", muted: "#777", faint: "#aaaaaa",
+  bg: "#f5f0e8", surface: "#fffdf8", card: "#fffdf8",
+  border: "#e8e0d0", borderGreen: "#c8d8b0",
+  yellow: "#d4a024", green: "#5a7e30", greenLight: "#5a8035",
+  text: "#1e1810", muted: "#8a7a62", faint: "#c0b090",
   red: "#c0392b", redBg: "#fff0ee", redBorder: "#f5c0b8",
-  expired: "#ececea", expiredBorder: "#d8d8d4",
-  statBg: "#ffffff", sheetBg: "#ffffff",
+  expired: "#ede8e0", expiredBorder: "#d8d0c0",
+  statBg: "#fffdf8", sheetBg: "#fffdf8",
+  accent: "#d4a024", accentBg: "#2e2010",
 };
 const DARK = {
-  bg: "#0f0f0f", surface: "#1a1a1a", card: "#1e1e1e",
-  border: "#2a2a2a", borderGreen: "#1e3020",
-  yellow: "#e6c000", green: "#2d6a1f", greenLight: "#4a8c30",
-  text: "#f0f0f0", muted: "#666", faint: "#3a3a3a",
+  bg: "#141210", surface: "#1e1a14", card: "#211e18",
+  border: "#2e2820", borderGreen: "#283020",
+  yellow: "#d4a024", green: "#5a7e30", greenLight: "#6a9040",
+  text: "#f0e8d8", muted: "#8a7a62", faint: "#3a3028",
   red: "#e05555", redBg: "#2a0f0f", redBorder: "#4a2020",
-  expired: "#141414", expiredBorder: "#222",
-  statBg: "#1a1a1a", sheetBg: "#141414",
+  expired: "#181510", expiredBorder: "#252018",
+  statBg: "#1a1710", sheetBg: "#181410",
+  accent: "#d4a024", accentBg: "#2e2010",
 };
 
-const FONT = "'Space Mono', monospace";
+const FONT = "'Outfit', sans-serif";
+const FONT_MONO = "'Outfit', sans-serif";
 const CATEGORIES = T.categories;
 
 // ─── theme context ────────────────────────────────────────────────────────────
@@ -179,20 +182,23 @@ function useTheme() { return React.useContext(ThemeCtx); }
 function GlobalStyles({ dark }) {
   return (
     <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
       * { box-sizing: border-box; }
-      body { margin: 0; background: ${dark ? "#0f0f0f" : "#f5f5f0"}; transition: background 0.2s; }
+      body { margin: 0; background: ${dark ? "#141210" : "#f5f0e8"}; transition: background 0.2s; font-family: 'Outfit', sans-serif; }
       input:focus, select:focus, textarea:focus {
-        border-color: #e6c000 !important;
-        box-shadow: 0 0 0 3px #e6c00022 !important;
+        border-color: #d4a024 !important;
+        box-shadow: 0 0 0 3px #d4a02420 !important;
+        outline: none;
       }
       input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
-      .item-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px #0000002a; }
-      .item-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+      .item-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px #00000030; }
+      .item-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
       button:active { opacity: 0.85; transform: scale(0.98); }
       ::-webkit-scrollbar { width: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: ${dark ? "#333" : "#ddd"}; border-radius: 2px; }
-      option { background: ${dark ? "#1a1a1a" : "#fff"}; color: ${dark ? "#f0f0f0" : "#1a1a1a"}; }
+      ::-webkit-scrollbar-thumb { background: ${dark ? "#2e2820" : "#d8d0c0"}; border-radius: 2px; }
+      option { background: ${dark ? "#1e1a14" : "#fffdf8"}; color: ${dark ? "#f0e8d8" : "#1e1810"}; }
+      @keyframes spin { to { transform: rotate(360deg); } }
     `}</style>
   );
 }
@@ -508,35 +514,70 @@ function StatsSheet({ items, onClose }) {
 }
 
 // ─── ItemCard ─────────────────────────────────────────────────────────────────
+const CAT_EMOJI = { "Elektronika": "📱", "Electronics": "📱", "Počítače": "💻", "Computers": "💻", "Nářadí": "🔧", "Tools": "🔧", "Bílá technika": "🫧", "Appliances": "🫧", "Nábytek": "🪑", "Furniture": "🪑", "Sport": "⚽", "Sports": "⚽", "Ostatní": "📦", "Other": "📦" };
+
 function ItemCard({ item, onSelect }) {
   const { C } = useTheme();
   const days = getDaysLeft(item.purchaseDate, item.warrantyMonths);
   const isExpired = days <= 0;
   const urgency = !isExpired && days < 60;
   const priceStr = item.price ? parseFloat(item.price).toLocaleString("cs-CZ") + " Kč" : "—";
+  const emoji = CAT_EMOJI[item.category] || "📦";
 
   return (
     <div className="item-card" onClick={() => onSelect(item)}
-      style={{ background: isExpired ? C.expired : C.card, border: `1px solid ${isExpired ? C.expiredBorder : urgency ? C.yellow + "44" : C.borderGreen}`, borderRadius: 6, padding: "14px 16px", marginBottom: 10, cursor: "pointer", opacity: isExpired ? 0.5 : 1, filter: isExpired ? "grayscale(0.6)" : "none", position: "relative", overflow: "hidden" }}>
-      {urgency && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg,${C.yellow},transparent)` }} />}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
-          <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: isExpired ? C.muted : C.text, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+      style={{
+        background: isExpired ? C.expired : C.card,
+        border: `1px solid ${isExpired ? C.expiredBorder : urgency ? C.yellow + "55" : C.border}`,
+        borderRadius: 14,
+        marginBottom: 10,
+        cursor: "pointer",
+        opacity: isExpired ? 0.55 : 1,
+        overflow: "hidden",
+        position: "relative",
+      }}>
+      {/* barevný pruh nahoře pro urgency */}
+      {urgency && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${C.yellow}, ${C.yellow}44)` }} />}
+
+      <div style={{ display: "flex", alignItems: "stretch" }}>
+        {/* náhled fotky / emoji */}
+        <div style={{
+          width: 80, minHeight: 90,
+          flexShrink: 0,
+          background: item.photoUrl ? "transparent" : (isExpired ? C.expiredBorder : C.accentBg || (C.border + "80")),
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: "0 0 0 0",
+        }}>
+          {item.photoUrl
+            ? <img src={item.photoUrl} alt={item.name}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 90 }} />
+            : <div style={{ width: "100%", height: "100%", minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{emoji}</div>
+          }
+        </div>
+
+        {/* obsah */}
+        <div style={{ flex: 1, padding: "12px 14px 10px", minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: isExpired ? C.muted : C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "60%" }}>{item.name}</div>
+            <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: isExpired ? C.muted : C.yellow, flexShrink: 0 }}>{priceStr}</div>
+          </div>
+
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
             <Badge text={item.category} color={isExpired ? C.muted : C.greenLight} />
             {urgency && <Badge text={T.expiringSoon} color={C.yellow} />}
             {isExpired && <Badge text={T.expired} color={C.muted} />}
           </div>
+
+          <WarrantyBar daysLeft={days} isExpired={isExpired} />
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10, color: C.faint, fontFamily: FONT }}>
+            <span>{T.bought} {new Date(item.purchaseDate).toLocaleDateString(lang === "cs" ? "cs-CZ" : "en-GB")}</span>
+            <span style={{ color: urgency ? C.yellow : C.faint, fontWeight: urgency ? 600 : 400 }}>
+              {isExpired ? T.expired : `${days} ${T.days}`}
+            </span>
+          </div>
         </div>
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: isExpired ? C.muted : C.yellow }}>{priceStr}</div>
-          <div style={{ fontSize: 10, color: C.faint, marginTop: 2 }}>{isExpired ? "—" : `${days} dní`}</div>
-        </div>
-      </div>
-      <WarrantyBar daysLeft={days} isExpired={isExpired} />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 9, color: C.faint, fontFamily: FONT }}>
-        <span>{T.bought} {new Date(item.purchaseDate).toLocaleDateString(lang === "cs" ? "cs-CZ" : "en-GB")}</span>
-        <span>{T.until} {getExpiryDate(item.purchaseDate, item.warrantyMonths)}</span>
       </div>
     </div>
   );
@@ -949,19 +990,19 @@ function LoginScreen() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: 24 }}>
-      <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       <Toast msg={msg} type={msgType} />
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg,transparent,${C.yellow}88,transparent)` }} />
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,transparent,${C.yellow},transparent)` }} />
 
       <div style={{ marginBottom: 40, textAlign: "center" }}>
-        <div style={{ display: "inline-block", background: C.yellow, padding: "10px 20px", marginBottom: 14 }}>
-          <span style={{ fontSize: 26, fontWeight: 700, color: "#000", letterSpacing: "0.04em" }}>ZÁRUČ<span style={{ color: "#1a3a10" }}>ÁKY</span></span>
+        <div style={{ fontSize: 36, fontWeight: 700, color: C.text, letterSpacing: "-0.03em", marginBottom: 6 }}>
+          Záručáky<span style={{ color: C.yellow }}>.</span>
         </div>
-        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.25em" }}>{T.appSubtitle}</div>
+        <div style={{ fontSize: 12, color: C.muted, fontWeight: 400 }}>{T.appSubtitle}</div>
       </div>
 
       <div style={{ width: "100%", maxWidth: 340 }}>
-        <div style={{ display: "flex", marginBottom: 24, border: `1px solid ${C.border}`, borderRadius: 6, overflow: "hidden" }}>
+        <div style={{ display: "flex", marginBottom: 24, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
           {[["login",T.login], ["register",T.register]].map(([k, label]) => (
             <button key={k} onClick={() => setMode(k)}
               style={{ flex: 1, padding: "9px 0", background: mode === k ? C.yellow : C.surface, color: mode === k ? "#000" : C.muted, border: "none", fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>
@@ -1038,40 +1079,43 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, maxWidth: 430, margin: "0 auto", fontFamily: FONT, paddingBottom: 100 }}>
-      <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
       {/* header */}
       <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, background: C.bg, zIndex: 50 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div>
-            <div style={{ display: "inline-block", background: C.yellow, padding: "2px 8px", marginBottom: 3 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#000", letterSpacing: "0.05em" }}>{T.appName}</span>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: "-0.02em" }}>
+              {T.appName.charAt(0).toUpperCase() + T.appName.slice(1).toLowerCase()}
+              <span style={{ color: C.yellow }}>.</span>
             </div>
-            <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.15em" }}>{active.length} {T.active} · {expired.length} {T.expired_s}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{active.length} {T.active} · {expired.length} {T.expired_s}</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <div onClick={() => { setShowSearch(s => !s); if (showSearch) setSearch(""); }}
-              style={{ width: 34, height: 34, background: showSearch ? C.yellow : C.surface, border: `1px solid ${showSearch ? C.yellow : C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>🔍</div>
-            <div onClick={() => setShowStats(true)}
-              style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>📊</div>
-            <div onClick={() => setShowHousehold(true)}
-              style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>🏠</div>
-            <div onClick={onToggleTheme}
-              style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>{dark ? "☀️" : "🌙"}</div>
-            <div onClick={() => { if (window.confirm(`${T.logoutConfirm}\n${userEmail}`)) onLogout(); }}
-              style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.borderGreen}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }} title={userEmail}>👤</div>
+            {[
+              { icon: "🔍", action: () => { setShowSearch(s => !s); if (showSearch) setSearch(""); }, active: showSearch },
+              { icon: "📊", action: () => setShowStats(true) },
+              { icon: "🏠", action: () => setShowHousehold(true) },
+              { icon: dark ? "☀️" : "🌙", action: onToggleTheme },
+              { icon: "👤", action: () => { if (window.confirm(`${T.logoutConfirm}\n${userEmail}`)) onLogout(); } },
+            ].map((btn, i) => (
+              <div key={i} onClick={btn.action}
+                style={{ width: 36, height: 36, background: btn.active ? C.yellow : C.surface, border: `1px solid ${btn.active ? C.yellow : C.border}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16 }}>
+                {btn.icon}
+              </div>
+            ))}
           </div>
         </div>
 
         {showSearch && (
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={T.searchPlaceholder} autoFocus
-            style={{ width: "100%", background: C.surface, border: `1px solid ${C.yellow}66`, borderRadius: 4, padding: "9px 12px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
+            style={{ width: "100%", background: C.surface, border: `1px solid ${C.yellow}66`, borderRadius: 10, padding: "10px 14px", color: C.text, fontSize: 13, fontFamily: FONT, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
           {[{ key: "expiry", label: T.byExpiry }, { key: "name", label: T.byName }].map(s => (
             <button key={s.key} onClick={() => setSort(s.key)}
-              style={{ background: sort === s.key ? C.yellow : C.surface, color: sort === s.key ? "#000" : C.muted, border: `1px solid ${sort === s.key ? C.yellow : C.border}`, borderRadius: 3, padding: "5px 12px", fontSize: 9, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>
+              style={{ background: sort === s.key ? C.yellow : C.surface, color: sort === s.key ? "#000" : C.muted, border: `1px solid ${sort === s.key ? C.yellow : C.border}`, borderRadius: 8, padding: "6px 14px", fontSize: 11, fontFamily: FONT, fontWeight: 600, cursor: "pointer" }}>
               {s.label}
             </button>
           ))}
@@ -1081,32 +1125,32 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
       {/* stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, padding: "14px 16px" }}>
         {[{ label: T.total, value: items.length, color: C.text }, { label: T.expiringSoon, value: expiring.length, color: C.yellow }, { label: T.expired, value: expired.length, color: C.muted }].map(s => (
-          <div key={s.label} style={{ background: C.statBg, border: `1px solid ${C.border}`, borderRadius: 6, padding: "10px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: s.color, marginBottom: 2 }}>{s.value}</div>
-            <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.12em" }}>{s.label}</div>
+          <div key={s.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: s.color, marginBottom: 2, fontFamily: FONT }}>{s.value}</div>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* list */}
       <div style={{ padding: "0 16px" }}>
-        <div style={{ fontSize: 8, color: C.faint, letterSpacing: "0.2em", marginBottom: 12 }}>
-          POLOŽKY — {sort === "expiry" ? T.byExpiry : T.byName}{search ? ` · "${search}"` : ""}
+        <div style={{ fontSize: 11, color: C.muted, fontWeight: 500, marginBottom: 12 }}>
+          {sort === "expiry" ? T.byExpiry : T.byName}{search ? ` · "${search}"` : ""}
         </div>
         {loading ? <Spinner />
           : items.length === 0 ? <EmptyState onAdd={onAdd} />
-          : sorted.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: C.muted, fontSize: 11 }}>{T.noResults} „{search}"</div>
+          : sorted.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: C.muted, fontSize: 13 }}>{T.noResults} „{search}"</div>
           : sorted.map(item => <ItemCard key={item.id} item={item} onSelect={onSelect} />)
         }
       </div>
 
       {/* footer copyright */}
-      <div style={{ textAlign: "center", padding: "20px 0 8px", fontSize: 9, color: C.faint, fontFamily: FONT }}>
+      <div style={{ textAlign: "center", padding: "20px 0 8px", fontSize: 11, color: C.faint, fontFamily: FONT }}>
         © PasysDev
       </div>
 
       {/* FAB */}
-      <div onClick={onAdd} style={{ position: "fixed", bottom: 28, right: 20, width: 52, height: 52, background: C.yellow, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 28px ${C.yellow}88`, zIndex: 60, color: "#000", userSelect: "none" }}>+</div>
+      <div onClick={onAdd} style={{ position: "fixed", bottom: 28, right: 20, width: 56, height: 56, background: C.yellow, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, cursor: "pointer", boxShadow: `0 6px 32px ${C.yellow}99`, zIndex: 60, color: "#1a0f00", userSelect: "none" }}>+</div>
 
       {showStats && <StatsSheet items={items} onClose={() => setShowStats(false)} />}
       {showHousehold && <HouseholdSheet onClose={() => setShowHousehold(false)} userId={userId} />}
