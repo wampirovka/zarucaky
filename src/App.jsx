@@ -363,7 +363,7 @@ function exportPDF(items) {
         <td>${item.price ? parseFloat(item.price).toLocaleString("cs-CZ") + " Kč" : "—"}</td>
         <td>${new Date(item.purchaseDate).toLocaleDateString("cs-CZ")}</td>
         <td>${getExpiryDate(item.purchaseDate, item.warrantyMonths)}</td>
-        <td style="color:${expired ? "#aaa" : days < 60 ? "#e6a000" : "#2d6a1f"}">${expired ? T.expired : days + " T.days + ""}</td>
+        <td style="color:${expired ? "#aaa" : days < 60 ? "#e6a000" : "#2d6a1f"}">${expired ? T.expired : days + " " + T.days}</td>
         <td>${item.serial || "—"}</td>
       </tr>`;
   }).join("");
@@ -524,8 +524,8 @@ function ItemCard({ item, onSelect }) {
           <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: isExpired ? C.muted : C.text, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             <Badge text={item.category} color={isExpired ? C.muted : C.greenLight} />
-            {urgency && <Badge text=T.expiringSoon color={C.yellow} />}
-            {isExpired && <Badge text=T.expired color={C.muted} />}
+            {urgency && <Badge text={T.expiringSoon} color={C.yellow} />}
+            {isExpired && <Badge text={T.expired} color={C.muted} />}
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -623,19 +623,19 @@ function AddEditSheet({ item, onClose, onSave, loading }) {
   return (
     <Sheet onClose={onClose} maxHeight="96vh">
       <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 16 }}>{isEdit ? T.editItem : T.addNew}</div>
-      <PhotoUpload url={form.photoUrl} onFile={setPhotoFile} label=T.photoProduct height={110} />
-      <PhotoUpload url={form.receiptUrl} onFile={setReceiptFile} label=T.receipt height={70} accept="image/*,application/pdf" />
-      <FInput label=T.itemName required value={form.name} onChange={set("name")} placeholder=T.itemNamePlaceholder />
+      <PhotoUpload url={form.photoUrl} onFile={setPhotoFile} label={T.photoProduct} height={110} />
+      <PhotoUpload url={form.receiptUrl} onFile={setReceiptFile} label={T.receipt} height={70} accept="image/*,application/pdf" />
+      <FInput label={T.itemName} required value={form.name} onChange={set("name")} placeholder={T.itemNamePlaceholder} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <FInput label=T.price value={form.price} onChange={set("price")} type="number" placeholder="0" />
-        <FInput label=T.warrantyMonths value={form.warrantyMonths} onChange={set("warrantyMonths")} type="number" placeholder="24" />
+        <FInput label={T.price} value={form.price} onChange={set("price")} type="number" placeholder="0" />
+        <FInput label={T.warrantyMonths} value={form.warrantyMonths} onChange={set("warrantyMonths")} type="number" placeholder="24" />
       </div>
-      <FInput label=T.serial value={form.serial} onChange={set("serial")} placeholder="SN-XXXXX" />
-      <FInput label=T.purchaseDate value={form.purchaseDate} onChange={set("purchaseDate")} type="date" />
-      <FSelect label=T.category value={form.category} onChange={set("category")} options={CATEGORIES} />
+      <FInput label={T.serial} value={form.serial} onChange={set("serial")} placeholder="SN-XXXXX" />
+      <FInput label={T.purchaseDate} value={form.purchaseDate} onChange={set("purchaseDate")} type="date" />
+      <FSelect label={T.category} value={form.category} onChange={set("category")} options={CATEGORIES} />
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>{T.noteLabel}</div>
-        <textarea value={form.note} onChange={set("note")} placeholder=T.notePlaceholder rows={3}
+        <textarea value={form.note} onChange={set("note")} placeholder={T.notePlaceholder} rows={3}
           style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "11px 13px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
       </div>
       {form.purchaseDate && form.warrantyMonths && (
@@ -844,7 +844,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
         </div>
 
         {showSearch && (
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder=T.searchPlaceholder autoFocus
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={T.searchPlaceholder} autoFocus
             style={{ width: "100%", background: C.surface, border: `1px solid ${C.yellow}66`, borderRadius: 4, padding: "9px 12px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
         )}
 
