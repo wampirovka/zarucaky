@@ -609,6 +609,48 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
   );
 }
 
+// ─── OCR helper ───────────────────────────────────────────────────────────────
+async function ocrReceipt(file) {
+  const toBase64 = f => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(f);
+  });
+  const b64 = await toBase64(file);
+  const mediaType = file.type || "image/jpeg";
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 300,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+          { type: "text", text: `Analyze this receipt/invoice image. Extract ONLY these fields and respond with ONLY valid JSON, no markdown:
+{"name":"product name or store name","price":"amount as number string without currency","date":"YYYY-MM-DD format or empty string if not found"}
+If you cannot find a field, use empty string. Date must be in YYYY-MM-DD format.` }
+        ]
+      }]
+    })
+  });
+  const data = await resp.json();
+  const text = data.content?.[0]?.text || "{}";
+  try {
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch {
+    return {};
+  }
+}
+
 // ─── AddEditSheet ─────────────────────────────────────────────────────────────
 const EMPTY = { name: "", price: "", serial: "", purchaseDate: new Date().toISOString().split("T")[0], warrantyMonths: "24", category: "Elektronika", note: "" };
 
@@ -617,14 +659,46 @@ function AddEditSheet({ item, onClose, onSave, loading }) {
   const [form, setForm] = useState(item && item.id ? { ...item, warrantyMonths: String(item.warrantyMonths ?? 24), price: String(item.price ?? "") } : { ...EMPTY });
   const [photoFile, setPhotoFile] = useState(null);
   const [receiptFile, setReceiptFile] = useState(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   const isEdit = !!item;
+
+  const handleReceiptFile = async (file) => {
+    setReceiptFile(file);
+    setOcrLoading(true);
+    try {
+      const result = await ocrReceipt(file);
+      setForm(f => ({
+        ...f,
+        name: result.name && !f.name ? result.name : f.name,
+        price: result.price && !f.price ? result.price : f.price,
+        purchaseDate: result.date && result.date.match(/^\d{4}-\d{2}-\d{2}$/) ? result.date : f.purchaseDate,
+      }));
+    } catch (e) {
+      // OCR selhalo tiše — formulář zůstane prázdný
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   return (
     <Sheet onClose={onClose} maxHeight="96vh">
       <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 16 }}>{isEdit ? T.editItem : T.addNew}</div>
       <PhotoUpload url={form.photoUrl} onFile={setPhotoFile} label={T.photoProduct} height={110} />
-      <PhotoUpload url={form.receiptUrl} onFile={setReceiptFile} label={T.receipt} height={70} accept="image/*,application/pdf" />
+      <div style={{ position: "relative" }}>
+        <PhotoUpload url={form.receiptUrl} onFile={handleReceiptFile} label={T.receipt} height={70} accept="image/*,application/pdf" />
+        {ocrLoading && (
+          <div style={{ position: "absolute", inset: 0, background: C.surface + "cc", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ width: 16, height: 16, border: `2px solid ${C.border}`, borderTop: `2px solid ${C.yellow}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+            <span style={{ fontFamily: FONT, fontSize: 10, color: C.muted }}>🤖 {lang === "cs" ? "Čtu účtenku…" : "Reading receipt…"}</span>
+          </div>
+        )}
+        {!ocrLoading && receiptFile && (
+          <div style={{ marginTop: -10, marginBottom: 14, background: C.bg, border: `1px solid ${C.borderGreen}`, borderRadius: 5, padding: "6px 10px", fontSize: 9, color: C.greenLight, fontFamily: FONT }}>
+            ✓ {lang === "cs" ? "AI přečetlo účtenku" : "AI read the receipt"}
+          </div>
+        )}
+      </div>
       <FInput label={T.itemName} required value={form.name} onChange={set("name")} placeholder={T.itemNamePlaceholder} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <FInput label={T.price} value={form.price} onChange={set("price")} type="number" placeholder="0" />
@@ -684,6 +758,149 @@ function EmptyState({ onAdd }) {
       <div style={{ fontSize: 11, color: C.faint, marginBottom: 28 }}>{T.emptyDesc}</div>
       <Btn onClick={onAdd}>{T.addItem}</Btn>
     </div>
+  );
+}
+
+// ─── HouseholdSheet ───────────────────────────────────────────────────────────
+function HouseholdSheet({ onClose, userId }) {
+  const { C } = useTheme();
+  const [household, setHousehold] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [inviteCode, setInviteCode] = useState("");
+  const [householdName, setHouseholdName] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [msgType, setMsgType] = useState("ok");
+
+  const showMsg = (t, type = "ok") => { setMsg(t); setMsgType(type); setTimeout(() => setMsg(null), 3000); };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    // Najdi domácnost kde jsem člen nebo vlastník
+    const { data: memberRows } = await supabase.from("household_members").select("household_id").eq("user_id", userId);
+    const { data: ownedRows } = await supabase.from("households").select("*").eq("owner_id", userId);
+
+    let hh = ownedRows?.[0] || null;
+    if (!hh && memberRows?.length) {
+      const { data } = await supabase.from("households").select("*").eq("id", memberRows[0].household_id).single();
+      hh = data;
+    }
+    setHousehold(hh);
+
+    if (hh) {
+      const { data: mems } = await supabase.from("household_members").select("user_id, role, joined_at").eq("household_id", hh.id);
+      setMembers(mems || []);
+    }
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const createHousehold = async () => {
+    if (!householdName.trim()) return showMsg(lang === "cs" ? "Zadej název domácnosti" : "Enter household name", "error");
+    setCreating(true);
+    const { data: hh, error } = await supabase.from("households").insert({ name: householdName.trim(), owner_id: userId }).select().single();
+    if (error) { showMsg(error.message, "error"); setCreating(false); return; }
+    await supabase.from("household_members").insert({ household_id: hh.id, user_id: userId, role: "owner" });
+    setCreating(false);
+    showMsg(lang === "cs" ? "Domácnost vytvořena!" : "Household created!");
+    load();
+  };
+
+  const joinHousehold = async () => {
+    if (!inviteCode.trim()) return showMsg(lang === "cs" ? "Zadej kód pozvánky" : "Enter invite code", "error");
+    setJoining(true);
+    const { data: hh, error } = await supabase.from("households").select("*").eq("invite_code", inviteCode.trim().toUpperCase()).single();
+    if (error || !hh) { showMsg(lang === "cs" ? "Neplatný kód" : "Invalid code", "error"); setJoining(false); return; }
+    const { error: e2 } = await supabase.from("household_members").insert({ household_id: hh.id, user_id: userId, role: "member" });
+    if (e2) { showMsg(lang === "cs" ? "Už jsi členem" : "Already a member", "error"); setJoining(false); return; }
+    setJoining(false);
+    showMsg(lang === "cs" ? "Přidán do domácnosti!" : "Joined household!");
+    load();
+  };
+
+  const leaveHousehold = async () => {
+    if (!window.confirm(lang === "cs" ? "Opustit domácnost?" : "Leave household?")) return;
+    await supabase.from("household_members").delete().eq("household_id", household.id).eq("user_id", userId);
+    if (household.owner_id === userId) await supabase.from("households").delete().eq("id", household.id);
+    setHousehold(null);
+    setMembers([]);
+    showMsg(lang === "cs" ? "Opustil jsi domácnost" : "Left household");
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(household.invite_code);
+    showMsg(lang === "cs" ? "Kód zkopírován!" : "Code copied!");
+  };
+
+  return (
+    <Sheet onClose={onClose}>
+      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 20 }}>🏠 {lang === "cs" ? "SDÍLENÍ DOMÁCNOSTI" : "HOUSEHOLD SHARING"}</div>
+
+      {msg && <div style={{ background: msgType === "error" ? C.redBg : "#eef6eb", border: `1px solid ${msgType === "error" ? C.redBorder : C.borderGreen}`, color: msgType === "error" ? C.red : C.green, borderRadius: 5, padding: "8px 12px", fontFamily: FONT, fontSize: 11, marginBottom: 14 }}>{msg}</div>}
+
+      {loading ? <Spinner /> : household ? (
+        <>
+          {/* Info o domácnosti */}
+          <div style={{ background: C.surface, border: `1px solid ${C.borderGreen}`, borderRadius: 8, padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 4 }}>{lang === "cs" ? "DOMÁCNOST" : "HOUSEHOLD"}</div>
+            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 10 }}>{household.name}</div>
+            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 6 }}>{lang === "cs" ? "KÓD POZVÁNKY" : "INVITE CODE"}</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: C.yellow, letterSpacing: "0.2em" }}>{household.invite_code}</div>
+              <Btn onClick={copyCode} variant="ghost" style={{ padding: "6px 12px", fontSize: 10 }}>📋 {lang === "cs" ? "Kopírovat" : "Copy"}</Btn>
+            </div>
+          </div>
+
+          {/* Členové */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 10 }}>{lang === "cs" ? `ČLENOVÉ (${members.length})` : `MEMBERS (${members.length})`}</div>
+            {members.map(m => (
+              <div key={m.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, marginBottom: 6 }}>
+                <span style={{ fontFamily: FONT, fontSize: 11, color: C.text }}>👤 {m.user_id === userId ? (lang === "cs" ? "Ty" : "You") : m.user_id.slice(0, 8) + "…"}</span>
+                <span style={{ fontSize: 9, color: m.role === "owner" ? C.yellow : C.muted, fontFamily: FONT, fontWeight: 700 }}>{m.role.toUpperCase()}</span>
+              </div>
+            ))}
+          </div>
+
+          <Btn onClick={leaveHousehold} variant="danger" style={{ width: "100%" }}>
+            {household.owner_id === userId ? (lang === "cs" ? "🗑 Smazat domácnost" : "🗑 Delete household") : (lang === "cs" ? "← Opustit domácnost" : "← Leave household")}
+          </Btn>
+        </>
+      ) : (
+        <>
+          {/* Vytvořit */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 12 }}>{lang === "cs" ? "VYTVOŘIT NOVOU DOMÁCNOST" : "CREATE NEW HOUSEHOLD"}</div>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>{lang === "cs" ? "NÁZEV" : "NAME"}</div>
+              <input value={householdName} onChange={e => setHouseholdName(e.target.value)} placeholder={lang === "cs" ? "např. Rodina Novákových" : "e.g. Smith Family"}
+                style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "11px 13px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <Btn onClick={createHousehold} disabled={creating} style={{ width: "100%" }}>{creating ? "…" : (lang === "cs" ? "VYTVOŘIT →" : "CREATE →")}</Btn>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
+            <div style={{ flex: 1, height: 1, background: C.border }} />
+            <span style={{ fontSize: 9, color: C.faint, fontFamily: FONT }}>{lang === "cs" ? "NEBO" : "OR"}</span>
+            <div style={{ flex: 1, height: 1, background: C.border }} />
+          </div>
+
+          {/* Připojit */}
+          <div>
+            <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 12 }}>{lang === "cs" ? "PŘIPOJIT SE KÓD EM" : "JOIN WITH CODE"}</div>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>{lang === "cs" ? "KÓD POZVÁNKY" : "INVITE CODE"}</div>
+              <input value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())} placeholder="AB12CD34" maxLength={8}
+                style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "11px 13px", color: C.text, fontSize: 16, fontFamily: FONT, outline: "none", boxSizing: "border-box", letterSpacing: "0.3em", textAlign: "center" }} />
+            </div>
+            <Btn onClick={joinHousehold} disabled={joining} style={{ width: "100%" }}>{joining ? "…" : (lang === "cs" ? "PŘIPOJIT SE →" : "JOIN →")}</Btn>
+          </div>
+        </>
+      )}
+    </Sheet>
   );
 }
 
@@ -793,12 +1010,13 @@ function LoginScreen() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme }) {
+function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme, userId }) {
   const { C, dark } = useTheme();
   const [sort, setSort] = useState("expiry");
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showHousehold, setShowHousehold] = useState(false);
 
   const filtered = items.filter(i =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -836,6 +1054,8 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
               style={{ width: 34, height: 34, background: showSearch ? C.yellow : C.surface, border: `1px solid ${showSearch ? C.yellow : C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>🔍</div>
             <div onClick={() => setShowStats(true)}
               style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>📊</div>
+            <div onClick={() => setShowHousehold(true)}
+              style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>🏠</div>
             <div onClick={onToggleTheme}
               style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>{dark ? "☀️" : "🌙"}</div>
             <div onClick={() => { if (window.confirm(`${T.logoutConfirm}\n${userEmail}`)) onLogout(); }}
@@ -889,6 +1109,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
       <div onClick={onAdd} style={{ position: "fixed", bottom: 28, right: 20, width: 52, height: 52, background: C.yellow, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 28px ${C.yellow}88`, zIndex: 60, color: "#000", userSelect: "none" }}>+</div>
 
       {showStats && <StatsSheet items={items} onClose={() => setShowStats(false)} />}
+      {showHousehold && <HouseholdSheet onClose={() => setShowHousehold(false)} userId={userId} />}
     </div>
   );
 }
@@ -979,7 +1200,7 @@ export default function App() {
       {!session
         ? <LoginScreen />
         : <>
-            <Dashboard items={items} loading={loadingItems} onAdd={() => setEditing(false)} onSelect={setSelected} onLogout={handleLogout} userEmail={session.user.email} onToggleTheme={toggleTheme} />
+            <Dashboard items={items} loading={loadingItems} onAdd={() => setEditing(false)} onSelect={setSelected} onLogout={handleLogout} userEmail={session.user.email} onToggleTheme={toggleTheme} userId={session.user.id} />
             {selected && <DetailSheet item={selected} onClose={() => setSelected(null)} onEdit={item => { setSelected(null); setEditing(item); }} onDelete={item => { setSelected(null); setDeleting(item); }} />}
             {editing !== null && <AddEditSheet item={editing || null} onClose={() => setEditing(null)} onSave={handleSave} loading={savingItem} />}
             {deleting && <DeleteSheet item={deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete} loading={deletingItem} />}
