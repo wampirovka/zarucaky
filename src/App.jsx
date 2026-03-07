@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -43,7 +43,24 @@ function toDB(item, userId) {
     purchase_date: item.purchaseDate,
     warranty_months: parseInt(item.warrantyMonths) || 24,
     note: item.note || null,
+    photo_url: item.photoUrl || null,
+    receipt_url: item.receiptUrl || null,
   };
+}
+
+
+// ─── upload helper ────────────────────────────────────────────────────────────
+async function uploadFile(file, userId, folder) {
+  const ext = file.name.split(".").pop() || "jpg";
+  const path = `${userId}/${folder}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("warranty-files")
+    .upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage
+    .from("warranty-files")
+    .getPublicUrl(path);
+  return data.publicUrl;
 }
 
 // ─── design tokens ────────────────────────────────────────────────────────────
@@ -76,6 +93,40 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
   `}</style>
 );
+
+
+// ─── PhotoUpload ──────────────────────────────────────────────────────────────
+function PhotoUpload({ url, onFile, label = "FOTO PRODUKTU", height = 130, accept = "image/*" }) {
+  const ref = React.useRef();
+  const [preview, setPreview] = React.useState(url || null);
+  const [uploading, setUploading] = React.useState(false);
+
+  const handleChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPreview(URL.createObjectURL(file));
+    onFile(file);
+  };
+
+  return (
+    <div
+      onClick={() => ref.current.click()}
+      style={{ background: "#f0f0ea", border: "1px dashed #d0d0c8", borderRadius: 8, height, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, position: "relative", overflow: "hidden", cursor: "pointer" }}
+    >
+      {preview
+        ? <img src={preview} alt="náhled" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : <div style={{ textAlign: "center", pointerEvents: "none" }}>
+            <div style={{ fontSize: height > 100 ? 28 : 22 }}>📷</div>
+            <div style={{ fontSize: 9, color: "#bbb", fontFamily: FONT, letterSpacing: "0.1em", marginTop: 4 }}>{label}</div>
+          </div>
+      }
+      <div style={{ position: "absolute", top: 8, right: 8, background: C.yellow, color: "#000", fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 2, fontFamily: FONT, pointerEvents: "none" }}>
+        {preview ? "ZMĚNIT" : "+ PŘIDAT"}
+      </div>
+      <input ref={ref} type="file" accept={accept} capture="environment" onChange={handleChange} style={{ display: "none" }} />
+    </div>
+  );
+}
 
 // ─── UI atoms ─────────────────────────────────────────────────────────────────
 function Badge({ text, color }) {
@@ -206,12 +257,14 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
   ];
   return (
     <Sheet onClose={onClose}>
-      <div style={{ background: "#f0f0ea", border: "1px dashed #d0d0c8", borderRadius: 8, height: 130, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, position: "relative", overflow: "hidden", filter: isExpired ? "grayscale(0.7)" : "none" }}>
+      <div style={{ marginBottom: 18, filter: isExpired ? "grayscale(0.7)" : "none" }}>
+        <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 6 }}>FOTO PRODUKTU</div>
         {item.photoUrl
-          ? <img src={item.photoUrl} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <div style={{ textAlign: "center" }}><div style={{ fontSize: 28 }}>📷</div><div style={{ fontSize: 9, color: "#bbb", fontFamily: FONT, letterSpacing: "0.1em", marginTop: 4 }}>FOTO PRODUKTU</div></div>
+          ? <img src={item.photoUrl} alt="foto" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 8, display: "block" }} />
+          : <div style={{ background: "#f0f0ea", border: "1px dashed #d0d0c8", borderRadius: 8, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 28 }}>📷</div><div style={{ fontSize: 9, color: "#bbb", fontFamily: FONT, letterSpacing: "0.1em", marginTop: 4 }}>FOTO PRODUKTU</div></div>
+            </div>
         }
-        <div style={{ position: "absolute", top: 8, right: 8, background: C.yellow, color: "#000", fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 2, fontFamily: FONT }}>+ PŘIDAT</div>
       </div>
       <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: isExpired ? C.muted : C.text, marginBottom: 6 }}>{item.name}</div>
       <div style={{ marginBottom: 14 }}><Badge text={item.category} color={isExpired ? "#aaa" : C.greenLight} /></div>
@@ -231,13 +284,19 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
           <div style={{ fontSize: 11, color: C.muted }}>{item.note}</div>
         </div>
       )}
-      <div style={{ background: C.bg, border: "1px dashed #d8d8d0", borderRadius: 5, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <span style={{ fontSize: 20 }}>🧾</span>
-        <div>
-          <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em" }}>ÚČTENKA</div>
-          <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>{item.receiptUrl ? "Zobrazit účtenku" : "Klepněte pro přidání fotky účtenky"}</div>
-        </div>
-      </div>
+      {item.receiptUrl
+        ? <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 6 }}>ÚČTENKA</div>
+            <img src={item.receiptUrl} alt="účtenka" style={{ width: "100%", borderRadius: 6, display: "block", cursor: "pointer" }} onClick={() => window.open(item.receiptUrl, "_blank")} />
+          </div>
+        : <div style={{ background: C.bg, border: "1px dashed #d8d8d0", borderRadius: 5, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+            <span style={{ fontSize: 20 }}>🧾</span>
+            <div>
+              <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em" }}>ÚČTENKA</div>
+              <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>Přidej účtenku přes Upravit</div>
+            </div>
+          </div>
+      }
       <div style={{ display: "flex", gap: 10 }}>
         <Btn onClick={() => { onClose(); onEdit(item); }} style={{ flex: 1 }}>✏️ UPRAVIT</Btn>
         <Btn onClick={() => { onClose(); onDelete(item); }} variant="danger">🗑</Btn>
@@ -251,15 +310,16 @@ const EMPTY = { name: "", price: "", serial: "", purchaseDate: new Date().toISOS
 
 function AddEditSheet({ item, onClose, onSave, loading }) {
   const [form, setForm] = useState(item && item.id ? { ...item, warrantyMonths: String(item.warrantyMonths ?? 24), price: String(item.price ?? "") } : { ...EMPTY });
+  const [photoFile, setPhotoFile] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   const isEdit = !!item;
 
   return (
     <Sheet onClose={onClose} maxHeight="96vh">
-      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 20 }}>{isEdit ? "✏️ UPRAVIT POLOŽKU" : "＋ NOVÁ POLOŽKA"}</div>
-      <div style={{ background: "#f0f0ea", border: "1px dashed #d0d0c8", borderRadius: 6, height: 80, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, cursor: "pointer" }}>
-        <div style={{ textAlign: "center" }}><div style={{ fontSize: 22 }}>📷</div><div style={{ fontSize: 9, color: "#bbb", fontFamily: FONT, letterSpacing: "0.1em", marginTop: 4 }}>FOTO + ÚČTENKA</div></div>
-      </div>
+      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 16 }}>{isEdit ? "✏️ UPRAVIT POLOŽKU" : "＋ NOVÁ POLOŽKA"}</div>
+      <PhotoUpload url={form.photoUrl} onFile={setPhotoFile} label="FOTO PRODUKTU" height={110} />
+      <PhotoUpload url={form.receiptUrl} onFile={setReceiptFile} label="ÚČTENKA" height={70} accept="image/*,application/pdf" />
       <FInput label="NÁZEV POLOŽKY" required value={form.name} onChange={set("name")} placeholder="např. Samsung Galaxy S24" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <FInput label="CENA (Kč)" value={form.price} onChange={set("price")} type="number" placeholder="0" />
@@ -281,7 +341,7 @@ function AddEditSheet({ item, onClose, onSave, loading }) {
       )}
       <div style={{ display: "flex", gap: 10 }}>
         <Btn onClick={onClose} variant="ghost" style={{ flex: 1 }} disabled={loading}>ZRUŠIT</Btn>
-        <Btn onClick={async () => { if (form.name.trim() && !loading) { await onSave(form); } }} disabled={!form.name.trim() || loading} style={{ flex: 2 }}>
+        <Btn onClick={async () => { if (form.name.trim() && !loading) { await onSave(form, photoFile, receiptFile); } }} disabled={!form.name.trim() || loading} style={{ flex: 2 }}>
           {loading ? "UKLÁDÁM…" : isEdit ? "ULOŽIT ZMĚNY →" : "PŘIDAT POLOŽKU →"}
         </Btn>
       </div>
@@ -546,23 +606,39 @@ export default function App() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const handleSave = async (form) => {
+  const handleSave = async (form, photoFile, receiptFile) => {
     if (!session) return;
     setSavingItem(true);
-    const isEdit = !!form.id && items.find(i => i.id === form.id);
-    const payload = toDB(form, session.user.id);
+    try {
+      // Upload fotek pokud byly vybrány
+      let photoUrl = form.photoUrl || null;
+      let receiptUrl = form.receiptUrl || null;
 
-    let error;
-    if (isEdit) {
-      ({ error } = await supabase.from("items").update(payload).eq("id", form.id));
-    } else {
-      ({ error } = await supabase.from("items").insert(payload));
+      if (photoFile) {
+        try { photoUrl = await uploadFile(photoFile, session.user.id, "photos"); }
+        catch (e) { showToast("Chyba uploadu fotky: " + e.message, "error"); setSavingItem(false); return; }
+      }
+      if (receiptFile) {
+        try { receiptUrl = await uploadFile(receiptFile, session.user.id, "receipts"); }
+        catch (e) { showToast("Chyba uploadu účtenky: " + e.message, "error"); setSavingItem(false); return; }
+      }
+
+      const isEdit = !!form.id && items.find(i => i.id === form.id);
+      const payload = toDB({ ...form, photoUrl, receiptUrl }, session.user.id);
+
+      let error;
+      if (isEdit) {
+        ({ error } = await supabase.from("items").update(payload).eq("id", form.id));
+      } else {
+        ({ error } = await supabase.from("items").insert(payload));
+      }
+      if (error) { showToast("Chyba ukládání: " + error.message, "error"); return; }
+      showToast(isEdit ? "Položka aktualizována ✓" : "Položka přidána ✓");
+      setEditing(null);
+      fetchItems();
+    } finally {
+      setSavingItem(false);
     }
-    setSavingItem(false);
-    if (error) return showToast("Chyba ukládání: " + error.message, "error");
-    showToast(isEdit ? "Položka aktualizována ✓" : "Položka přidána ✓");
-    setEditing(null);
-    fetchItems();
   };
 
   const handleDelete = async (id) => {
