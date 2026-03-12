@@ -221,7 +221,6 @@ function PhotoUpload({ url, onFile, label = T.photoProduct, height = 130, accept
 
   return (
     <div style={{ marginBottom: 14, position: "relative" }}>
-      {/* hlavní plocha */}
       <div onClick={() => setShowMenu(m => !m)}
         style={{ background: C.surface, border: `1px dashed ${showMenu ? C.yellow : C.border}`, borderRadius: 8, height, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", cursor: "pointer" }}>
         {preview
@@ -236,7 +235,6 @@ function PhotoUpload({ url, onFile, label = T.photoProduct, height = 130, accept
         </div>
       </div>
 
-      {/* výběr zdroje */}
       {showMenu && (
         <div style={{ position: "absolute", top: height + 4, left: 0, right: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, zIndex: 10, overflow: "hidden", boxShadow: "0 4px 20px #0002" }}>
           <div onClick={() => refCamera.current.click()}
@@ -258,10 +256,8 @@ function PhotoUpload({ url, onFile, label = T.photoProduct, height = 130, accept
         </div>
       )}
 
-      {/* backdrop pro zavření menu */}
       {showMenu && <div style={{ position: "fixed", inset: 0, zIndex: 9 }} onClick={() => setShowMenu(false)} />}
 
-      {/* skryté inputy */}
       <input ref={refCamera} type="file" accept={accept} capture="camera" onChange={handleChange} style={{ display: "none" }} />
       <input ref={refGallery} type="file" accept={accept} onChange={handleChange} style={{ display: "none" }} />
     </div>
@@ -456,7 +452,6 @@ function StatsSheet({ items, onClose }) {
     <Sheet onClose={onClose} maxHeight="92vh">
       <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 20 }}>📊 STATISTIKY</div>
 
-      {/* hlavní čísla */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
         {[
           { label: T.totalValue, value: totalValue.toLocaleString("cs-CZ") + " Kč", color: C.text },
@@ -473,7 +468,6 @@ function StatsSheet({ items, onClose }) {
         ))}
       </div>
 
-      {/* brzy vyprší */}
       {soonest.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 10 }}>NEJBLIŽŠÍ VYPRŠENÍ</div>
@@ -490,7 +484,6 @@ function StatsSheet({ items, onClose }) {
         </div>
       )}
 
-      {/* podle kategorie */}
       {byCat.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 10 }}>PODLE KATEGORIE</div>
@@ -536,18 +529,15 @@ function ItemCard({ item, onSelect }) {
         overflow: "hidden",
         position: "relative",
       }}>
-      {/* barevný pruh nahoře pro urgency */}
       {urgency && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${C.yellow}, ${C.yellow}44)` }} />}
 
       <div style={{ display: "flex", alignItems: "stretch" }}>
-        {/* náhled fotky / emoji */}
         <div style={{
           width: 80, minHeight: 90,
           flexShrink: 0,
           background: item.photoUrl ? "transparent" : (isExpired ? C.expiredBorder : C.accentBg || (C.border + "80")),
           position: "relative",
           overflow: "hidden",
-          borderRadius: "0 0 0 0",
         }}>
           {item.photoUrl
             ? <img src={item.photoUrl} alt={item.name}
@@ -556,7 +546,6 @@ function ItemCard({ item, onSelect }) {
           }
         </div>
 
-        {/* obsah */}
         <div style={{ flex: 1, padding: "12px 14px 10px", minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
             <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: isExpired ? C.muted : C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "60%" }}>{item.name}</div>
@@ -716,7 +705,7 @@ function AddEditSheet({ item, onClose, onSave, loading }) {
         purchaseDate: result.date && result.date.match(/^\d{4}-\d{2}-\d{2}$/) ? result.date : f.purchaseDate,
       }));
     } catch (e) {
-      // OCR selhalo tiše — formulář zůstane prázdný
+      // OCR selhalo tiše
     } finally {
       setOcrLoading(false);
     }
@@ -802,262 +791,13 @@ function EmptyState({ onAdd }) {
   );
 }
 
-// ─── HouseholdSheet ───────────────────────────────────────────────────────────
-function HouseholdSheet({ onClose, userId }) {
-  const { C } = useTheme();
-  const [household, setHousehold] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [inviteCode, setInviteCode] = useState("");
-  const [householdName, setHouseholdName] = useState("");
-  const [joining, setJoining] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [msgType, setMsgType] = useState("ok");
-
-  const showMsg = (t, type = "ok") => { setMsg(t); setMsgType(type); setTimeout(() => setMsg(null), 3000); };
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    // Najdi domácnost kde jsem člen nebo vlastník
-    const { data: memberRows } = await supabase.from("household_members").select("household_id").eq("user_id", userId);
-    const { data: ownedRows } = await supabase.from("households").select("*").eq("owner_id", userId);
-
-    let hh = ownedRows?.[0] || null;
-    if (!hh && memberRows?.length) {
-      const { data } = await supabase.from("households").select("*").eq("id", memberRows[0].household_id).single();
-      hh = data;
-    }
-    setHousehold(hh);
-
-    if (hh) {
-      const { data: mems } = await supabase.from("household_members").select("user_id, role, joined_at").eq("household_id", hh.id);
-      setMembers(mems || []);
-    }
-    setLoading(false);
-  }, [userId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const createHousehold = async () => {
-    if (!householdName.trim()) return showMsg(lang === "cs" ? "Zadej název domácnosti" : "Enter household name", "error");
-    setCreating(true);
-    const { data: hh, error } = await supabase.from("households").insert({ name: householdName.trim(), owner_id: userId }).select().single();
-    if (error) { showMsg(error.message, "error"); setCreating(false); return; }
-    await supabase.from("household_members").insert({ household_id: hh.id, user_id: userId, role: "owner" });
-    setCreating(false);
-    showMsg(lang === "cs" ? "Domácnost vytvořena!" : "Household created!");
-    load();
-  };
-
-  const joinHousehold = async () => {
-    if (!inviteCode.trim()) return showMsg(lang === "cs" ? "Zadej kód pozvánky" : "Enter invite code", "error");
-    setJoining(true);
-    const { data: hh, error } = await supabase.from("households").select("*").eq("invite_code", inviteCode.trim().toUpperCase()).single();
-    if (error || !hh) { showMsg(lang === "cs" ? "Neplatný kód" : "Invalid code", "error"); setJoining(false); return; }
-    const { error: e2 } = await supabase.from("household_members").insert({ household_id: hh.id, user_id: userId, role: "member" });
-    if (e2) { showMsg(lang === "cs" ? "Už jsi členem" : "Already a member", "error"); setJoining(false); return; }
-    setJoining(false);
-    showMsg(lang === "cs" ? "Přidán do domácnosti!" : "Joined household!");
-    load();
-  };
-
-  const leaveHousehold = async () => {
-    if (!window.confirm(lang === "cs" ? "Opustit domácnost?" : "Leave household?")) return;
-    await supabase.from("household_members").delete().eq("household_id", household.id).eq("user_id", userId);
-    if (household.owner_id === userId) await supabase.from("households").delete().eq("id", household.id);
-    setHousehold(null);
-    setMembers([]);
-    showMsg(lang === "cs" ? "Opustil jsi domácnost" : "Left household");
-  };
-
-  const copyCode = () => {
-    navigator.clipboard.writeText(household.invite_code);
-    showMsg(lang === "cs" ? "Kód zkopírován!" : "Code copied!");
-  };
-
-  return (
-    <Sheet onClose={onClose}>
-      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 20 }}>🏠 {lang === "cs" ? "SDÍLENÍ DOMÁCNOSTI" : "HOUSEHOLD SHARING"}</div>
-
-      {msg && <div style={{ background: msgType === "error" ? C.redBg : "#eef6eb", border: `1px solid ${msgType === "error" ? C.redBorder : C.borderGreen}`, color: msgType === "error" ? C.red : C.green, borderRadius: 5, padding: "8px 12px", fontFamily: FONT, fontSize: 11, marginBottom: 14 }}>{msg}</div>}
-
-      {loading ? <Spinner /> : household ? (
-        <>
-          {/* Info o domácnosti */}
-          <div style={{ background: C.surface, border: `1px solid ${C.borderGreen}`, borderRadius: 8, padding: "14px 16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 4 }}>{lang === "cs" ? "DOMÁCNOST" : "HOUSEHOLD"}</div>
-            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 10 }}>{household.name}</div>
-            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 6 }}>{lang === "cs" ? "KÓD POZVÁNKY" : "INVITE CODE"}</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: C.yellow, letterSpacing: "0.2em" }}>{household.invite_code}</div>
-              <Btn onClick={copyCode} variant="ghost" style={{ padding: "6px 12px", fontSize: 10 }}>📋 {lang === "cs" ? "Kopírovat" : "Copy"}</Btn>
-            </div>
-          </div>
-
-          {/* Členové */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 10 }}>{lang === "cs" ? `ČLENOVÉ (${members.length})` : `MEMBERS (${members.length})`}</div>
-            {members.map(m => (
-              <div key={m.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, marginBottom: 6 }}>
-                <span style={{ fontFamily: FONT, fontSize: 11, color: C.text }}>👤 {m.user_id === userId ? (lang === "cs" ? "Ty" : "You") : m.user_id.slice(0, 8) + "…"}</span>
-                <span style={{ fontSize: 9, color: m.role === "owner" ? C.yellow : C.muted, fontFamily: FONT, fontWeight: 700 }}>{m.role.toUpperCase()}</span>
-              </div>
-            ))}
-          </div>
-
-          <Btn onClick={leaveHousehold} variant="danger" style={{ width: "100%" }}>
-            {household.owner_id === userId ? (lang === "cs" ? "🗑 Smazat domácnost" : "🗑 Delete household") : (lang === "cs" ? "← Opustit domácnost" : "← Leave household")}
-          </Btn>
-        </>
-      ) : (
-        <>
-          {/* Vytvořit */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 12 }}>{lang === "cs" ? "VYTVOŘIT NOVOU DOMÁCNOST" : "CREATE NEW HOUSEHOLD"}</div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>{lang === "cs" ? "NÁZEV" : "NAME"}</div>
-              <input value={householdName} onChange={e => setHouseholdName(e.target.value)} placeholder={lang === "cs" ? "např. Rodina Novákových" : "e.g. Smith Family"}
-                style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "11px 13px", color: C.text, fontSize: 12, fontFamily: FONT, outline: "none", boxSizing: "border-box" }} />
-            </div>
-            <Btn onClick={createHousehold} disabled={creating} style={{ width: "100%" }}>{creating ? "…" : (lang === "cs" ? "VYTVOŘIT →" : "CREATE →")}</Btn>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-            <span style={{ fontSize: 9, color: C.faint, fontFamily: FONT }}>{lang === "cs" ? "NEBO" : "OR"}</span>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-          </div>
-
-          {/* Připojit */}
-          <div>
-            <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 12 }}>{lang === "cs" ? "PŘIPOJIT SE KÓD EM" : "JOIN WITH CODE"}</div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 5, fontFamily: FONT }}>{lang === "cs" ? "KÓD POZVÁNKY" : "INVITE CODE"}</div>
-              <input value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())} placeholder="AB12CD34" maxLength={8}
-                style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "11px 13px", color: C.text, fontSize: 16, fontFamily: FONT, outline: "none", boxSizing: "border-box", letterSpacing: "0.3em", textAlign: "center" }} />
-            </div>
-            <Btn onClick={joinHousehold} disabled={joining} style={{ width: "100%" }}>{joining ? "…" : (lang === "cs" ? "PŘIPOJIT SE →" : "JOIN →")}</Btn>
-          </div>
-        </>
-      )}
-    </Sheet>
-  );
-}
-
-// ─── LoginScreen ──────────────────────────────────────────────────────────────
-function LoginScreen() {
-  const { C, dark } = useTheme();
-  const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [pass2, setPass2] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [msgType, setMsgType] = useState("ok");
-
-  const showMsg = (text, type = "ok") => { setMsg(text); setMsgType(type); setTimeout(() => setMsg(null), 3500); };
-
-  const handleLogin = async () => {
-    if (!email || !pass) return showMsg(T.fillEmailPass, "error");
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    setLoading(false);
-    if (error) return showMsg(error.message === "Invalid login credentials" ? T.badCredentials : error.message, "error");
-  };
-  const handleRegister = async () => {
-    if (!email || !pass) return showMsg(T.fillEmailPass, "error");
-    if (pass !== pass2) return showMsg(T.passMismatch, "error");
-    if (pass.length < 6) return showMsg(T.passShort, "error");
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password: pass });
-    setLoading(false);
-    if (error) return showMsg(error.message, "error");
-    showMsg(T.registerOk);
-    setMode("login");
-  };
-  const handleReset = async () => {
-    if (!email) return showMsg(T.fillEmail, "error");
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    setLoading(false);
-    if (error) return showMsg(error.message, "error");
-    showMsg(T.resetOk);
-    setMode("login");
-  };
-
-  const handle = mode === "login" ? handleLogin : mode === "register" ? handleRegister : handleReset;
-
-  return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: 24 }}>
-      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-      <Toast msg={msg} type={msgType} />
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,transparent,${C.yellow},transparent)` }} />
-
-      <div style={{ marginBottom: 40, textAlign: "center" }}>
-        <div style={{ fontSize: 36, fontWeight: 700, color: C.text, letterSpacing: "-0.03em", marginBottom: 6 }}>
-          Záručáky<span style={{ color: C.yellow }}>.</span>
-        </div>
-        <div style={{ fontSize: 12, color: C.muted, fontWeight: 400 }}>{T.appSubtitle}</div>
-      </div>
-
-      <div style={{ width: "100%", maxWidth: 340 }}>
-        <div style={{ display: "flex", marginBottom: 24, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
-          {[["login",T.login], ["register",T.register]].map(([k, label]) => (
-            <button key={k} onClick={() => setMode(k)}
-              style={{ flex: 1, padding: "9px 0", background: mode === k ? C.yellow : C.surface, color: mode === k ? "#000" : C.muted, border: "none", fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 6 }}>E-MAIL</div>
-          <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="vas@email.cz" onKeyDown={e => e.key === "Enter" && handle()}
-            style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "13px 14px", color: C.text, fontSize: 13, fontFamily: FONT, outline: "none", boxSizing: "border-box" }} />
-        </div>
-        {mode !== "reset" && (
-          <div style={{ marginBottom: mode === "register" ? 14 : 28 }}>
-            <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 6 }}>HESLO</div>
-            <input value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handle()}
-              style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "13px 14px", color: C.text, fontSize: 13, fontFamily: FONT, outline: "none", boxSizing: "border-box" }} />
-          </div>
-        )}
-        {mode === "register" && (
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 6 }}>HESLO ZNOVU</div>
-            <input value={pass2} onChange={e => setPass2(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handle()}
-              style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, padding: "13px 14px", color: C.text, fontSize: 13, fontFamily: FONT, outline: "none", boxSizing: "border-box" }} />
-          </div>
-        )}
-
-        <button onClick={handle} disabled={loading}
-          style={{ width: "100%", background: loading ? C.border : C.yellow, color: loading ? C.muted : "#000", border: "none", borderRadius: 4, padding: "14px", fontFamily: FONT, fontWeight: 700, fontSize: 13, letterSpacing: "0.1em", cursor: loading ? "default" : "pointer", marginBottom: 14 }}>
-          {loading ? "…" : mode === "login" ? T.loginBtn : mode === "register" ? T.registerBtn : T.resetBtn}
-        </button>
-
-        {mode === "login" && <div style={{ textAlign: "center" }}><span onClick={() => setMode("reset")} style={{ fontSize: 10, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>{T.forgotPassword}</span></div>}
-        {mode === "reset" && <div style={{ textAlign: "center" }}><span onClick={() => setMode("login")} style={{ fontSize: 10, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>{T.backToLogin}</span></div>}
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 20, justifyContent: "center" }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, boxShadow: `0 0 8px ${C.green}` }} />
-          <span style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em" }}>{T.connected}</span>
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: 32, fontSize: 9, color: C.faint }}>© PasysDev</div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme, userId }) {
+function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme }) {
   const { C, dark } = useTheme();
   const [sort, setSort] = useState("expiry");
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [showHousehold, setShowHousehold] = useState(false);
 
   const filtered = items.filter(i =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -1095,7 +835,6 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
             {[
               { icon: "🔍", action: () => { setShowSearch(s => !s); if (showSearch) setSearch(""); }, active: showSearch },
               { icon: "📊", action: () => setShowStats(true) },
-              { icon: "🏠", action: () => setShowHousehold(true) },
               { icon: dark ? "☀️" : "🌙", action: onToggleTheme },
               { icon: "👤", action: () => { if (window.confirm(`${T.logoutConfirm}\n${userEmail}`)) onLogout(); } },
             ].map((btn, i) => (
@@ -1144,7 +883,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
         }
       </div>
 
-      {/* footer copyright */}
+      {/* footer */}
       <div style={{ textAlign: "center", padding: "20px 0 8px", fontSize: 11, color: C.faint, fontFamily: FONT }}>
         © PasysDev
       </div>
@@ -1153,7 +892,6 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
       <div onClick={onAdd} style={{ position: "fixed", bottom: 28, right: 20, width: 56, height: 56, background: C.yellow, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, cursor: "pointer", boxShadow: `0 6px 32px ${C.yellow}99`, zIndex: 60, color: "#1a0f00", userSelect: "none" }}>+</div>
 
       {showStats && <StatsSheet items={items} onClose={() => setShowStats(false)} />}
-      {showHousehold && <HouseholdSheet onClose={() => setShowHousehold(false)} userId={userId} />}
     </div>
   );
 }
@@ -1244,7 +982,7 @@ export default function App() {
       {!session
         ? <LoginScreen />
         : <>
-            <Dashboard items={items} loading={loadingItems} onAdd={() => setEditing(false)} onSelect={setSelected} onLogout={handleLogout} userEmail={session.user.email} onToggleTheme={toggleTheme} userId={session.user.id} />
+            <Dashboard items={items} loading={loadingItems} onAdd={() => setEditing(false)} onSelect={setSelected} onLogout={handleLogout} userEmail={session.user.email} onToggleTheme={toggleTheme} />
             {selected && <DetailSheet item={selected} onClose={() => setSelected(null)} onEdit={item => { setSelected(null); setEditing(item); }} onDelete={item => { setSelected(null); setDeleting(item); }} />}
             {editing !== null && <AddEditSheet item={editing || null} onClose={() => setEditing(null)} onSave={handleSave} loading={savingItem} />}
             {deleting && <DeleteSheet item={deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete} loading={deletingItem} />}
