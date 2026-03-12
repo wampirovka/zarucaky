@@ -37,11 +37,31 @@ function toDB(item, userId) {
   };
 }
 
+// ─── compress helper ──────────────────────────────────────────────────────────
+async function compressImage(file, maxPx = 1200, quality = 0.8) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => resolve(blob), "image/jpeg", quality);
+    };
+    img.src = url;
+  });
+}
+
 // ─── upload helper ────────────────────────────────────────────────────────────
 async function uploadFile(file, userId, folder) {
-  const ext = file.name.split(".").pop() || "jpg";
+  const isImage = file.type.startsWith("image/");
+  const uploadBlob = isImage ? await compressImage(file) : file;
+  const ext = isImage ? "jpg" : (file.name.split(".").pop() || "bin");
   const path = `${userId}/${folder}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from("warranty-files").upload(path, file, { upsert: true });
+  const { error } = await supabase.storage.from("warranty-files").upload(path, uploadBlob, { upsert: true });
   if (error) throw error;
   const { data } = supabase.storage.from("warranty-files").getPublicUrl(path);
   return data.publicUrl;
