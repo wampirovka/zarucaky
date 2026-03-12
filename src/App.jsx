@@ -921,6 +921,89 @@ function EmptyState({ onAdd }) {
   );
 }
 
+// ─── AboutSheet ───────────────────────────────────────────────────────────────
+const GUIDE_STEPS = {
+  cs: [
+    { emoji: "➕", title: "Přidání položky", desc: "Klepni na zlaté tlačítko + vpravo dole. Vyplň název, cenu, datum nákupu a délku záruky." },
+    { emoji: "🧾", title: "Skenování účtenky", desc: "Ve formuláři klepni na pole Účtenka a vyfoť nebo vyber účtenku. AI automaticky přečte název, cenu a datum." },
+    { emoji: "📷", title: "Foto produktu", desc: "Přidej fotku produktu — na kartičce se pak zobrazí jako náhled místo ikonky kategorie." },
+    { emoji: "📋", title: "Detail a úprava", desc: "Klepni na libovolnou položku pro zobrazení detailu. Odtud ji můžeš upravit, smazat nebo sdílet." },
+    { emoji: "⬛", title: "QR kód", desc: "V detailu položky klepni na ⬛ pro vygenerování QR kódu se základními informacemi o záruce." },
+    { emoji: "📊", title: "Statistiky", desc: "Ikonka 📊 v záhlaví zobrazí přehled hodnot, aktivních záruk a graf podle kategorií. Odtud lze také exportovat do PDF nebo e-mailu." },
+    { emoji: "🌙", title: "Tmavý režim", desc: "Přepni mezi světlým a tmavým vzhledem pomocí ikonky 🌙 / ☀️ v záhlaví." },
+    { emoji: "📱", title: "Instalace na plochu", desc: "V prohlížeči zvol 'Přidat na plochu' pro instalaci jako samostatná aplikace. Funguje i offline." },
+  ],
+  en: [
+    { emoji: "➕", title: "Adding an item", desc: "Tap the gold + button in the bottom right. Fill in the name, price, purchase date and warranty length." },
+    { emoji: "🧾", title: "Receipt scanning", desc: "In the form, tap the Receipt field and take or select a photo. AI will automatically read the name, price and date." },
+    { emoji: "📷", title: "Product photo", desc: "Add a product photo — it will appear as a thumbnail on the card instead of the category icon." },
+    { emoji: "📋", title: "Detail & editing", desc: "Tap any item to view its detail. From there you can edit, delete or share it." },
+    { emoji: "⬛", title: "QR code", desc: "In the item detail, tap ⬛ to generate a QR code with the warranty information." },
+    { emoji: "📊", title: "Statistics", desc: "The 📊 icon in the header shows value overview, active warranties and a category breakdown. Export to PDF or email from here." },
+    { emoji: "🌙", title: "Dark mode", desc: "Toggle between light and dark theme using the 🌙 / ☀️ icon in the header." },
+    { emoji: "📱", title: "Install to home screen", desc: "In your browser choose 'Add to home screen' to install as a standalone app. Works offline too." },
+  ],
+};
+
+function AboutSheet({ onClose, onLogout, userEmail }) {
+  const { C } = useTheme();
+  const steps = GUIDE_STEPS[lang];
+  const appLabel = lang === "cs" ? "Záručáky" : "Keepit";
+  const version = "1.0";
+
+  return (
+    <Sheet onClose={onClose} maxHeight="96vh">
+      {/* hlavička */}
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ fontSize: 36, fontWeight: 700, color: C.text, letterSpacing: "-0.02em" }}>
+          {appLabel}<span style={{ color: C.yellow }}>.</span>
+        </div>
+        <div style={{ fontSize: 10, color: C.muted, letterSpacing: "0.15em", marginTop: 4 }}>
+          {lang === "cs" ? "SPRÁVA ZÁRUČNÍCH LHŮT" : "WARRANTY MANAGEMENT"} · v{version}
+        </div>
+      </div>
+
+      {/* popis */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: C.text, fontFamily: FONT, lineHeight: 1.7 }}>
+          {lang === "cs"
+            ? "Keepit ti pomáhá sledovat záruční lhůty všech tvých produktů. Fotografuj účtenky, nech AI přečíst data, a nikdy nezapomeň na vypršenou záruku."
+            : "Keepit helps you track warranty periods for all your products. Photograph receipts, let AI read the data, and never miss an expired warranty again."
+          }
+        </div>
+      </div>
+
+      {/* funkce */}
+      <div style={{ fontSize: 9, color: C.faint, fontFamily: FONT, letterSpacing: "0.15em", marginBottom: 12 }}>
+        {lang === "cs" ? "JAK POUŽÍVAT" : "HOW TO USE"}
+      </div>
+
+      {steps.map((step, i) => (
+        <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 22, flexShrink: 0, width: 36, textAlign: "center" }}>{step.emoji}</div>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 3 }}>{step.title}</div>
+            <div style={{ fontFamily: FONT, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>{step.desc}</div>
+          </div>
+        </div>
+      ))}
+
+      {/* účet a odhlášení */}
+      <div style={{ marginTop: 24, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+        <div style={{ fontSize: 8, color: C.faint, fontFamily: FONT, letterSpacing: "0.12em", marginBottom: 6 }}>
+          {lang === "cs" ? "PŘIHLÁŠENÝ ÚČET" : "SIGNED IN AS"}
+        </div>
+        <div style={{ fontFamily: FONT, fontSize: 12, color: C.text, marginBottom: 14 }}>👤 {userEmail}</div>
+        <Btn onClick={() => { if (window.confirm(`${lang === "cs" ? "Odhlásit se?" : "Log out?"}\n${userEmail}`)) { onClose(); onLogout(); } }} variant="danger" style={{ width: "100%" }}>
+          {lang === "cs" ? "← ODHLÁSIT SE" : "← LOG OUT"}
+        </Btn>
+      </div>
+
+      <div style={{ textAlign: "center", fontSize: 10, color: C.faint, fontFamily: FONT }}>© PasysDev</div>
+    </Sheet>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme, onRefresh }) {
   const { C, dark } = useTheme();
@@ -928,6 +1011,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
@@ -975,7 +1059,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
               { icon: "🔍", action: () => { setShowSearch(s => !s); if (showSearch) setSearch(""); }, active: showSearch },
               { icon: "📊", action: () => setShowStats(true) },
               { icon: dark ? "☀️" : "🌙", action: onToggleTheme },
-              { icon: "👤", action: () => { if (window.confirm(`${T.logoutConfirm}\n${userEmail}`)) onLogout(); } },
+              { icon: "👤", action: () => setShowAbout(true) },
             ].map((btn, i) => (
               <div key={i} onClick={btn.action}
                 style={{ width: 36, height: 36, background: btn.active ? C.yellow : C.surface, border: `1px solid ${btn.active ? C.yellow : C.border}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16 }}>
@@ -1038,6 +1122,7 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
       <div onClick={onAdd} style={{ position: "fixed", bottom: 28, right: 20, width: 56, height: 56, background: C.yellow, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, cursor: "pointer", boxShadow: `0 6px 32px ${C.yellow}99`, zIndex: 60, color: "#1a0f00", userSelect: "none" }}>+</div>
 
       {showStats && <StatsSheet items={items} onClose={() => setShowStats(false)} />}
+      {showAbout && <AboutSheet onClose={() => setShowAbout(false)} onLogout={onLogout} userEmail={userEmail} />}
     </div>
   );
 }
