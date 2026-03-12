@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-
 export default defineConfig({
   server: {
     host: true
@@ -12,11 +11,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Záručáky',
-        short_name: 'Záručáky',
+        name: 'Keepit',
+        short_name: 'Keepit',
         description: 'Správa záručních lhůt',
-        theme_color: '#e6c000',
-        background_color: '#f5f5f0',
+        theme_color: '#d4a024',
+        background_color: '#141210',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

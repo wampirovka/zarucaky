@@ -117,7 +117,7 @@ const TRANSLATIONS = {
     copiedToClipboard: "Zkopírováno do schránky!",
   },
   en: {
-    appName: "WARRANTI", appSubtitle: "WARRANTY MANAGEMENT",
+    appName: "KEEPIT", appSubtitle: "WARRANTY MANAGEMENT",
     login: "LOGIN", register: "REGISTER",
     loginBtn: "LOG IN →", registerBtn: "REGISTER →", resetBtn: "SEND RESET →",
     email: "E-MAIL", password: "PASSWORD", passwordAgain: "CONFIRM PASSWORD",
@@ -160,7 +160,7 @@ const TRANSLATIONS = {
     passShort: "Password must be at least 6 characters", fillEmail: "Enter your email",
     registerOk: "Registration successful! Check your email.", resetOk: "Password reset email sent!",
     categories: ["Electronics", "Computers", "Tools", "Appliances", "Furniture", "Sports", "Other"],
-    exportDate: "Exported on", exportTitle: "WARRANTI – Export",
+    exportDate: "Exported on", exportTitle: "KEEPIT – Export",
     copiedToClipboard: "Copied to clipboard!",
   },
 };
@@ -193,6 +193,30 @@ const DARK = {
 const FONT = "'Outfit', sans-serif";
 const FONT_MONO = "'Outfit', sans-serif";
 const CATEGORIES = T.categories;
+
+// ─── pull-to-refresh hook ─────────────────────────────────────────────────────
+function usePullToRefresh(onRefresh) {
+  useEffect(() => {
+    let startY = 0;
+    let pulling = false;
+    const threshold = 80;
+    const onTouchStart = (e) => {
+      if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+    };
+    const onTouchEnd = async (e) => {
+      if (!pulling) return;
+      const diff = e.changedTouches[0].clientY - startY;
+      if (diff > threshold) await onRefresh();
+      pulling = false;
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [onRefresh]);
+}
 
 // ─── theme context ────────────────────────────────────────────────────────────
 const ThemeCtx = React.createContext({ C: LIGHT, dark: false, toggle: () => {} });
@@ -432,6 +456,42 @@ function exportPDF(items) {
   if (w) setTimeout(() => w.print(), 600);
 }
 
+// ─── Email Export ─────────────────────────────────────────────────────────────
+function exportEmail(items) {
+  const active = items.filter(i => getDaysLeft(i.purchaseDate, i.warrantyMonths) > 0);
+  const expiring = items.filter(i => { const d = getDaysLeft(i.purchaseDate, i.warrantyMonths); return d > 0 && d < 180; });
+  const totalValue = items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
+  const now = new Date().toLocaleDateString("cs-CZ");
+
+  const lines = [
+    `${T.appName} – přehled záruk (${now})`,
+    ``,
+    `Celkem: ${items.length} položek | Aktivních: ${active.length} | Brzy vyprší: ${expiring.length}`,
+    `Celková hodnota: ${totalValue.toLocaleString("cs-CZ")} Kč`,
+    ``,
+    `─────────────────────────────────`,
+    ...items.map(item => {
+      const days = getDaysLeft(item.purchaseDate, item.warrantyMonths);
+      const expired = days <= 0;
+      return [
+        `📦 ${item.name} (${item.category})`,
+        `   Cena: ${item.price ? parseFloat(item.price).toLocaleString("cs-CZ") + " Kč" : "—"}`,
+        `   Koupeno: ${new Date(item.purchaseDate).toLocaleDateString("cs-CZ")}`,
+        `   Záruka do: ${getExpiryDate(item.purchaseDate, item.warrantyMonths)}`,
+        `   Stav: ${expired ? "⚠️ VYPRŠELO" : `✅ zbývá ${days} dní`}`,
+        item.serial ? `   S/N: ${item.serial}` : "",
+        ``,
+      ].filter(l => l !== null).join("\n");
+    }),
+    `─────────────────────────────────`,
+    `© PasysDev`,
+  ].join("\n");
+
+  const subject = encodeURIComponent(`${T.appName} – přehled záruk ${now}`);
+  const body = encodeURIComponent(lines);
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
 // ─── Share ────────────────────────────────────────────────────────────────────
 function shareItem(item) {
   const days = getDaysLeft(item.purchaseDate, item.warrantyMonths);
@@ -449,6 +509,54 @@ ${item.serial ? `S/N: ${item.serial}` : ""}
   } else {
     navigator.clipboard.writeText(text).then(() => alert(T.copiedToClipboard));
   }
+}
+
+// ─── QR Sheet ─────────────────────────────────────────────────────────────────
+function QRSheet({ item, onClose }) {
+  const { C } = useTheme();
+  const canvasRef = React.useRef();
+  const days = getDaysLeft(item.purchaseDate, item.warrantyMonths);
+  const isExpired = days <= 0;
+  const text = [
+    item.name,
+    item.category,
+    item.price ? parseFloat(item.price).toLocaleString("cs-CZ") + " Kč" : "",
+    "Koupeno: " + new Date(item.purchaseDate).toLocaleDateString("cs-CZ"),
+    "Záruka do: " + getExpiryDate(item.purchaseDate, item.warrantyMonths),
+    isExpired ? "VYPRŠELO" : "Zbývá: " + days + " dní",
+    item.serial ? "S/N: " + item.serial : "",
+  ].filter(Boolean).join("\n");
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const size = 220;
+    const ctx = canvas.getContext("2d");
+    canvas.width = size;
+    canvas.height = size;
+    // Jednoduchý QR přes API
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => ctx.drawImage(img, 0, 0, size, size);
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&bgcolor=ffffff&color=1e1810&margin=10`;
+  }, [text]);
+
+  return (
+    <Sheet onClose={onClose}>
+      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.yellow, letterSpacing: "0.1em", marginBottom: 16 }}>
+        QR KÓD · {item.name}
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+        <div style={{ background: "#fff", padding: 12, borderRadius: 12, display: "inline-block" }}>
+          <canvas ref={canvasRef} style={{ display: "block", borderRadius: 6 }} />
+        </div>
+      </div>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: C.muted, fontFamily: FONT, whiteSpace: "pre-line", lineHeight: 1.7 }}>{text}</div>
+      </div>
+      <Btn onClick={onClose} variant="ghost" style={{ width: "100%" }}>{T.cancel}</Btn>
+    </Sheet>
+  );
 }
 
 // ─── StatsSheet ───────────────────────────────────────────────────────────────
@@ -521,7 +629,8 @@ function StatsSheet({ items, onClose }) {
         </div>
       )}
 
-      <Btn onClick={() => exportPDF(items)} style={{ width: "100%" }}>📄 EXPORTOVAT DO PDF</Btn>
+      <Btn onClick={() => exportPDF(items)} style={{ width: "100%", marginBottom: 10 }}>📄 EXPORTOVAT DO PDF</Btn>
+      <Btn onClick={() => exportEmail(items)} variant="ghost" style={{ width: "100%" }}>📧 {lang === "cs" ? "ODESLAT E-MAILEM" : "SEND BY EMAIL"}</Btn>
     </Sheet>
   );
 }
@@ -593,7 +702,7 @@ function ItemCard({ item, onSelect }) {
 }
 
 // ─── DetailSheet ──────────────────────────────────────────────────────────────
-function DetailSheet({ item, onClose, onEdit, onDelete }) {
+function DetailSheet({ item, onClose, onEdit, onDelete, onQR }) {
   const { C } = useTheme();
   const days = getDaysLeft(item.purchaseDate, item.warrantyMonths);
   const isExpired = days <= 0;
@@ -621,6 +730,7 @@ function DetailSheet({ item, onClose, onEdit, onDelete }) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14 }}>
         <Badge text={item.category} color={isExpired ? C.muted : C.greenLight} />
         <div onClick={() => shareItem(item)} style={{ marginLeft: "auto", cursor: "pointer", fontSize: 18 }} title="Sdílet">🔗</div>
+        <div onClick={onQR} style={{ cursor: "pointer", fontSize: 18 }} title="QR kód">⬛</div>
       </div>
       <WarrantyBar daysLeft={days} isExpired={isExpired} />
       <div style={{ height: 14 }} />
@@ -812,12 +922,21 @@ function EmptyState({ onAdd }) {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme }) {
+function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onToggleTheme, onRefresh }) {
   const { C, dark } = useTheme();
   const [sort, setSort] = useState("expiry");
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await onRefresh();
+    setRefreshing(false);
+  }, [onRefresh]);
+
+  usePullToRefresh(handleRefresh);
 
   const filtered = items.filter(i =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -881,6 +1000,13 @@ function Dashboard({ items, loading, onAdd, onSelect, onLogout, userEmail, onTog
         </div>
       </div>
 
+      {/* pull-to-refresh indikátor */}
+      {refreshing && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "10px 0", background: C.bg }}>
+          <div style={{ width: 20, height: 20, border: `2px solid ${C.border}`, borderTop: `2px solid ${C.yellow}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+        </div>
+      )}
+
       {/* stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, padding: "14px 16px" }}>
         {[{ label: T.total, value: items.length, color: C.text }, { label: T.expiringSoon, value: expiring.length, color: C.yellow }, { label: T.expired, value: expired.length, color: C.muted }].map(s => (
@@ -931,6 +1057,7 @@ export default function App() {
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState(false);
   const [toast, setToast] = useState(null);
+  const [qr, setQR] = useState(null);
 
   const showToast = (msg, type = "ok") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
@@ -1002,10 +1129,11 @@ export default function App() {
       {!session
         ? <LoginScreen />
         : <>
-            <Dashboard items={items} loading={loadingItems} onAdd={() => setEditing(false)} onSelect={setSelected} onLogout={handleLogout} userEmail={session.user.email} onToggleTheme={toggleTheme} />
-            {selected && <DetailSheet item={selected} onClose={() => setSelected(null)} onEdit={item => { setSelected(null); setEditing(item); }} onDelete={item => { setSelected(null); setDeleting(item); }} />}
+            <Dashboard items={items} loading={loadingItems} onAdd={() => setEditing(false)} onSelect={setSelected} onLogout={handleLogout} userEmail={session.user.email} onToggleTheme={toggleTheme} onRefresh={fetchItems} />
+            {selected && <DetailSheet item={selected} onClose={() => setSelected(null)} onEdit={item => { setSelected(null); setEditing(item); }} onDelete={item => { setSelected(null); setDeleting(item); }} onQR={() => setQR(selected)} />}
             {editing !== null && <AddEditSheet item={editing || null} onClose={() => setEditing(null)} onSave={handleSave} loading={savingItem} />}
             {deleting && <DeleteSheet item={deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete} loading={deletingItem} />}
+            {qr && <QRSheet item={qr} onClose={() => setQR(null)} />}
           </>
       }
     </ThemeCtx.Provider>
